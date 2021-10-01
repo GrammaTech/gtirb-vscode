@@ -9,6 +9,7 @@ if [[ $# -gt 0 ]]; then
 		echo "creating asm file ${ASM_FILE}"
 		echo "ISA: ${ISA}"
 		gtirb-pprinter --ir ${GTIRB_FILE} --asm ${ASM_FILE} 
+                ./mkref.py ${ASM_FILE}
 	else
 		echo "BAD ISA: ${ISA}"
 	fi
