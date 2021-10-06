@@ -61,9 +61,19 @@ for symbol in symbols:
     symlist.append(symbol.name)
 
 refs = defaultdict(list)
+defs = {}
 try:
     with open(asmfile, "r") as f:
         for i, line in enumerate(f):
+            # if this is a definition, a symbol followed by a comma is the whole line
+            if len(line) > 2:
+                line_minus_last = line[:-2]
+                print("looking for %s..." % line_minus_last)
+                if line_minus_last in symlist:
+                    defs[line_minus_last] = i
+                    print("found def of %s at %d" % (line_minus_last, i))
+
+            # parse the tokens to see if any are a symbol
             for word in line.strip().split():
                 if word in symlist:
                     #print("found reference to %s at line %d" % (word, i))
@@ -80,7 +90,8 @@ except Exception as inst:
 x = {
     "gtirb": gtirbfile,
     "asm": asmfile,
-    "xref": refs
+    "xref": refs,
+    "def": defs
 }
 #print(json.dumps(x))
 try:
