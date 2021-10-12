@@ -12,36 +12,10 @@ if argnum < 1:
     print("\nUsage: %s configfile\n" % sys.argv[0])
     quit()
 
-#configfile = sys.argv[1]
 asmfile = sys.argv[1]
 gtirbfile = os.path.splitext(asmfile)[0];
 xreffile = asmfile+'.json' 
 
-##
-## read configuration file
-##
-#gtirbfile = ""
-#asmfile = ""
-#xreffile = ""
-#try:
-#    with open(configfile, "r") as config:
-#        for line in config:
-#            token = ""
-#            value = ""
-#            split_line = line.split(":")
-#            if len(split_line) > 1:
-#                token = split_line[0].strip()
-#                value = split_line[1].strip()
-#                if token == "gtirb":
-#                    gtirbfile = value
-#                elif token == "asm":
-#                    asmfile = value
-#                elif token == "xref":
-#                    xreffile = value
-#except Exception as inst:
-#    print(inst)
-#    print("Unable to load config file %s." % configfile)
-#    quit()
 print ("GTIRB file:            %s" % gtirbfile)
 print ("Assembly file:         %s" % asmfile)
 print ("Cross reference file:  %s" % xreffile)
@@ -68,10 +42,9 @@ try:
             # if this is a definition, a symbol followed by a comma is the whole line
             if len(line) > 2:
                 line_minus_last = line[:-2]
-                print("looking for %s..." % line_minus_last)
                 if line_minus_last in symlist:
                     defs[line_minus_last] = i
-                    print("found def of %s at %d" % (line_minus_last, i))
+                    #print("found def of %s at %d" % (line_minus_last, i))
 
             # parse the tokens to see if any are a symbol
             for word in line.strip().split():

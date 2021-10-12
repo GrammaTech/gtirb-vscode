@@ -1,5 +1,5 @@
 {
-	"name": "gtirb-loader",
+	"name": "vscode-gtirb-loader",
 	"displayName": "GTIRB Loader",
 	"description": "Load GTIRB files",
 	"version": "0.0.1",
@@ -16,7 +16,7 @@
 		"Programming Languages"
 	],
 	"activationEvents": [
-		"workspaceContains:*.gtirb"
+		"onCustomEditor:gtirb-loader.gtirb"
 	],
 	"main": "./out/extension.js",
 	"contributes": {

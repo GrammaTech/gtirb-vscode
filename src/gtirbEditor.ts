@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { getNonce } from './util';
+import { Disposable } from './dispose';
+
 import * as cp from 'child_process';
 import * as fs from 'fs';
 
@@ -14,48 +16,100 @@ const execShell = (cmd: string) =>
     });
 
 /**
+ * If you are not extending some kind of Text Editor, you have to define a Custom Document
+ * This is the custom document definition for the GTIRB editor.
+ */
+ class GtirbDocument extends Disposable implements vscode.CustomDocument {
+	static create(
+        uri: vscode.Uri
+//	): Promise<GtirbDocument | PromiseLike<GtirbDocument>> {
+	): GtirbDocument {
+	return new GtirbDocument(uri);
+	}
+  
+	private readonly _uri: vscode.Uri;
+  
+	private constructor(uri: vscode.Uri) {
+      super();
+      this._uri = uri;
+	}
+  
+	public get uri() {
+        return this._uri;
+	}
+  
+	private readonly _onDidDispose = this._register(
+        new vscode.EventEmitter<void>()
+	);
+  
+	public readonly onDidDispose = this._onDidDispose.event;
+  
+	dispose(): void {
+        this._onDidDispose.fire();
+        super.dispose();
+	}
+  }
+  
+/**
  * Provider for gtirb editors.
  * 
  */
-export class GtirbEditorProvider implements vscode.CustomTextEditorProvider {
+export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<GtirbDocument> {
 
 	public static register(context: vscode.ExtensionContext): vscode.Disposable {
-		const provider = new GtirbEditorProvider(context);
-		const providerRegistration = vscode.window.registerCustomEditorProvider(GtirbEditorProvider.viewType, provider);
-		return providerRegistration;
+		//const provider = new GtirbEditorProvider(context);
+		//const providerRegistration = vscode.window.registerCustomEditorProvider(GtirbEditorProvider.viewType, provider);
+		//return providerRegistration;
+		return vscode.window.registerCustomEditorProvider(
+				GtirbEditorProvider.viewType,
+				new GtirbEditorProvider(context),
+			{
+				webviewOptions: {
+					retainContextWhenHidden: true,
+				},
+				supportsMultipleEditorsPerDocument: false,
+			}
+		);
 	}
 
 	private static readonly viewType = 'gtirb-loader.gtirb';
+	private myPath : string;
 
 	constructor(
 		private readonly context: vscode.ExtensionContext
-	) { }
+	) { 		this.myPath = context.extensionPath;
+	}
 
-	/**
-	 * Called when our custom editor is opened.
-	 * 
-	 * 
-	 */
-	public async resolveCustomTextEditor(
-		document: vscode.TextDocument,
-		webviewPanel: vscode.WebviewPanel,
-		_token: vscode.CancellationToken
-	): Promise<void> {
-		// Setup initial content for the webview
-		console.log("gtirb editor activated.");
+	async openCustomDocument(
+			uri: vscode.Uri, 
+			openContext: vscode.CustomDocumentOpenContext, 
+			token: vscode.CancellationToken
+	): Promise<GtirbDocument> {
+		const document: GtirbDocument = GtirbDocument.create(uri);
+		console.log("gtirb resolve custom editor called.");
 
-		execShell(`echo path = $PWD`).then(result => console.log(result));
-		execShell(`echo file = ${document.fileName}`).then(result => console.log(result));
-
-		const path: string = document.fileName;
-		execShell(`./indexer.sh ${path}`).then(result => console.log(result));
+		//execShell(`echo path = $PWD`).then(result => console.log(result));
+		//execShell(`echo file = ${document.uri.fsPath}`).then(result => console.log(result));
+		console.log (`extension path: ${this.myPath}`);
+		const path: string = uri.fsPath;
 		const x64AssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtx64'));
 		const armAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtarm'));
 		const mipsAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtmips'));
+
+//		if (fs.existsSync(x64AssemblyFile.fsPath)) {
+//			try {
+//				await execShell(`rm ${x64AssemblyFile.fsPath}`);
+//			} catch {
+//				vscode.window.showInformationMessage(`${x64AssemblyFile.toString(true)} could not delete`);
+//			}
+//		}
+		//execShell(`${this.myPath}/indexer.sh ${path}`).then(result => console.log(result));
+		await execShell(`${this.myPath}/indexer.sh ${path}`);
+
 		if (fs.existsSync(x64AssemblyFile.fsPath)) {
 			try {
 				await vscode.workspace.fs.stat(x64AssemblyFile);
-				vscode.window.showTextDocument(x64AssemblyFile);
+				await vscode.window.showTextDocument(x64AssemblyFile);
 			} catch {
 				vscode.window.showInformationMessage(`${x64AssemblyFile.toString(true)} does not exist`);
 			}
@@ -76,6 +130,22 @@ export class GtirbEditorProvider implements vscode.CustomTextEditorProvider {
 				vscode.window.showInformationMessage(`${mipsAssemblyFile.toString(true)} does not exist`);
 			}
 		}
+//		return Promise.resolve(document);
+		return document;
+	}
+
+	/**
+	 * Called when our custom editor is opened.
+	 * 
+	 * 
+	 */
+	async resolveCustomEditor(
+		document: GtirbDocument,
+		webviewPanel: vscode.WebviewPanel,
+		_token: vscode.CancellationToken
+	): Promise<void> {
+		// Setup initial content for the webview
+
 
 		webviewPanel.webview.options = {
 			enableScripts: true,
@@ -86,8 +156,9 @@ export class GtirbEditorProvider implements vscode.CustomTextEditorProvider {
 		function updateWebview() {
 			webviewPanel.webview.postMessage({
 				type: 'update',
-				text: document.getText(),
+				text: document.uri.fsPath,
 			});
+	
 		}
 
 		// Hook up event handlers so that we can synchronize the webview with the text document.
@@ -100,6 +171,7 @@ export class GtirbEditorProvider implements vscode.CustomTextEditorProvider {
 
 		const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
 			if (e.document.uri.toString() === document.uri.toString()) {
+				//don't do anything?
 				updateWebview();
 			}
 		});
@@ -108,7 +180,11 @@ export class GtirbEditorProvider implements vscode.CustomTextEditorProvider {
 		webviewPanel.onDidDispose(() => {
 			changeDocumentSubscription.dispose();
 		});
-		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+
+//		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		//await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		document.dispose();
+		//document.dispose();
 	}
 
 	/**
