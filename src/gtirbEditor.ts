@@ -4,6 +4,9 @@ import { Disposable } from './dispose';
 
 import * as cp from 'child_process';
 import * as fs from 'fs';
+//import { isUndefined } from 'util';
+//import { time } from 'console';
+//import time;
 
 const execShell = (cmd: string) =>
     new Promise<string>((resolve, reject) => {
@@ -106,10 +109,11 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 		//execShell(`${this.myPath}/indexer.sh ${path}`).then(result => console.log(result));
 		await execShell(`${this.myPath}/indexer.sh ${path}`);
 
+//		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 		if (fs.existsSync(x64AssemblyFile.fsPath)) {
 			try {
 				await vscode.workspace.fs.stat(x64AssemblyFile);
-				await vscode.window.showTextDocument(x64AssemblyFile);
+				vscode.window.showTextDocument(x64AssemblyFile);
 			} catch {
 				vscode.window.showInformationMessage(`${x64AssemblyFile.toString(true)} does not exist`);
 			}
@@ -131,6 +135,8 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 			}
 		}
 //		return Promise.resolve(document);
+//		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+// would prefer to return null here and never even display a document
 		return document;
 	}
 
@@ -148,10 +154,12 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 
 
 		webviewPanel.webview.options = {
-			enableScripts: true,
+			//enableScripts: true,
+			enableScripts: false
 		};
 
-		webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
+//		webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
+		webviewPanel.webview.html = '';
 
 		function updateWebview() {
 			webviewPanel.webview.postMessage({
@@ -181,9 +189,18 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 			changeDocumentSubscription.dispose();
 		});
 
-//		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 		//await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-		document.dispose();
+
+		// Have to close the gtirb custom editor. 
+		// Apparently the only way to be sure to do that is make it active,
+		// then call closeActiveEditor. Tried other things, they are not reliable. 
+		// Update no that doesn't work either
+//		await vscode.commands.executeCommand('vscode.openWith', document.uri, GtirbEditorProvider.viewType, 0);
+//		await vscode.commands.executeCommand('vscode.open', document.uri);
+		//vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		//await new Promise(f => setTimeout(f, 1000));
+		//document.dispose();
 		//document.dispose();
 	}
 
