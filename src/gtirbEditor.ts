@@ -4,9 +4,6 @@ import { Disposable } from './dispose';
 
 import * as cp from 'child_process';
 import * as fs from 'fs';
-//import { isUndefined } from 'util';
-//import { time } from 'console';
-//import time;
 
 const execShell = (cmd: string) =>
     new Promise<string>((resolve, reject) => {
@@ -25,6 +22,9 @@ const execShell = (cmd: string) =>
  class GtirbDocument extends Disposable implements vscode.CustomDocument {
 	static create(
         uri: vscode.Uri
+// Supposed to return a promise for a document, I experimented with 
+// just returning a document directly, doesn't seem to matter
+// Update: No. See ~/extension/promise-problem.txt
 //	): Promise<GtirbDocument | PromiseLike<GtirbDocument>> {
 	): GtirbDocument {
 	return new GtirbDocument(uri);
@@ -48,6 +48,23 @@ const execShell = (cmd: string) =>
 	public readonly onDidDispose = this._onDidDispose.event;
   
 	dispose(): void {
+		const path: string = this._uri.fsPath;
+		const x64AssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtx64'));
+		const mipsAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtmips'));
+		const armAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtarm'));
+		// Wait for text document
+		if (fs.existsSync(x64AssemblyFile.fsPath)) {
+			try {
+				//vscode.workspace.fs.stat(x64AssemblyFile);
+				vscode.window.showTextDocument(x64AssemblyFile);
+			} catch {
+				vscode.window.showInformationMessage(`${x64AssemblyFile.toString(true)} does not exist`);
+			}
+		} else	if (fs.existsSync(mipsAssemblyFile.fsPath)) {
+			vscode.window.showTextDocument(mipsAssemblyFile);
+		} else	if (fs.existsSync(armAssemblyFile.fsPath)) {
+			vscode.window.showTextDocument(armAssemblyFile);
+		}
         this._onDidDispose.fire();
         super.dispose();
 	}
@@ -96,47 +113,23 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 		console.log (`extension path: ${this.myPath}`);
 		const path: string = uri.fsPath;
 		const x64AssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtx64'));
+		const x64JsonFile: vscode.Uri = vscode.Uri.file(x64AssemblyFile.fsPath.concat('.json'));
+
 		const armAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtarm'));
+		const armJsonFile: vscode.Uri = vscode.Uri.file(armAssemblyFile.fsPath.concat('.json'));
+
 		const mipsAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtmips'));
+		const mipsJsonFile: vscode.Uri = vscode.Uri.file(mipsAssemblyFile.fsPath.concat('.json'));
 
-//		if (fs.existsSync(x64AssemblyFile.fsPath)) {
-//			try {
-//				await execShell(`rm ${x64AssemblyFile.fsPath}`);
-//			} catch {
-//				vscode.window.showInformationMessage(`${x64AssemblyFile.toString(true)} could not delete`);
-//			}
-//		}
-		//execShell(`${this.myPath}/indexer.sh ${path}`).then(result => console.log(result));
-		await execShell(`${this.myPath}/indexer.sh ${path}`);
-
-//		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-		if (fs.existsSync(x64AssemblyFile.fsPath)) {
-			try {
-				await vscode.workspace.fs.stat(x64AssemblyFile);
-				vscode.window.showTextDocument(x64AssemblyFile);
-			} catch {
-				vscode.window.showInformationMessage(`${x64AssemblyFile.toString(true)} does not exist`);
-			}
+		// This is where I have been calling indexer, maybe with wait, maybe not
+//		execShell(`${this.myPath}/indexer.sh ${path}`).then(result => console.log(result));
+		if ((fs.existsSync(x64JsonFile.fsPath) && fs.existsSync(x64JsonFile.fsPath))
+			|| (fs.existsSync(mipsJsonFile.fsPath) && fs.existsSync(mipsJsonFile.fsPath))
+			|| (fs.existsSync(armJsonFile.fsPath) && fs.existsSync(armJsonFile.fsPath))) {
+				console.log("reusing existing assembly and index files.");
+		} else {
+			await execShell(`${this.myPath}/indexer.sh ${path}`);
 		}
-		else if (fs.existsSync(armAssemblyFile.fsPath)) {
-			try {
-				await vscode.workspace.fs.stat(armAssemblyFile);
-				vscode.window.showTextDocument(armAssemblyFile);
-			} catch {
-				vscode.window.showInformationMessage(`${armAssemblyFile.toString(true)} does not exist`);
-			}
-		}
-		else if (fs.existsSync(mipsAssemblyFile.fsPath)) {
-			try {
-				await vscode.workspace.fs.stat(mipsAssemblyFile);
-				vscode.window.showTextDocument(mipsAssemblyFile);
-			} catch {
-				vscode.window.showInformationMessage(`${mipsAssemblyFile.toString(true)} does not exist`);
-			}
-		}
-//		return Promise.resolve(document);
-//		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-// would prefer to return null here and never even display a document
 		return document;
 	}
 
@@ -158,50 +151,11 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 			enableScripts: false
 		};
 
-//		webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
-		webviewPanel.webview.html = '';
+                // (If you move the indexing to here, the webview will show while indexing)
+		webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
 
-		function updateWebview() {
-			webviewPanel.webview.postMessage({
-				type: 'update',
-				text: document.uri.fsPath,
-			});
-	
-		}
-
-		// Hook up event handlers so that we can synchronize the webview with the text document.
-		//
-		// The text document acts as our model, so we have to sync change in the document to our
-		// editor and sync changes in the editor back to the document.
-		// 
-		// Remember that a single text document can also be shared between multiple custom
-		// editors (this happens for example when you split a custom editor)
-
-		const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
-			if (e.document.uri.toString() === document.uri.toString()) {
-				//don't do anything?
-				updateWebview();
-			}
-		});
-
-		// Make sure we get rid of the listener when our editor is closed.
-		webviewPanel.onDidDispose(() => {
-			changeDocumentSubscription.dispose();
-		});
-
+		// As soon as the document is open, start the shutdown sequence
 		vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-		//await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-
-		// Have to close the gtirb custom editor. 
-		// Apparently the only way to be sure to do that is make it active,
-		// then call closeActiveEditor. Tried other things, they are not reliable. 
-		// Update no that doesn't work either
-//		await vscode.commands.executeCommand('vscode.openWith', document.uri, GtirbEditorProvider.viewType, 0);
-//		await vscode.commands.executeCommand('vscode.open', document.uri);
-		//vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-		//await new Promise(f => setTimeout(f, 1000));
-		//document.dispose();
-		//document.dispose();
 	}
 
 	/**
@@ -224,9 +178,10 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-				<title>GTIRB</title>
+				<title>GTIRB Editor</title>
 			</head>
 			<body>
+				<i>Loading...</i>
 			</body>
 			</html>`;
 	}
