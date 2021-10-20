@@ -30,6 +30,27 @@
 					}
 				]
 			}
+		],
+		"languages": [
+			{
+				"id": "gtgas",
+				"aliases": [
+					"GTIRB GAS/AT&T x86/x64",
+					"gtgas"
+				],
+				"extensions": [
+					".gtx64",
+					".gtx86"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "gtgas",
+				"scopeName": "source.x86",
+				"path": "./syntaxes/gas.tmLanguage"
+			}
 		]
 	},
 	"scripts": {
@@ -37,6 +58,9 @@
 		"compile": "tsc -p ./",
 		"lint": "eslint . --ext .ts,.tsx",
 		"watch": "tsc -w -p ./"
+	},
+	"dependencies": {
+		"vscode-languageclient": "^7.0.0"
 	},
 	"devDependencies": {
 		"@types/node": "^12.12.0",
