@@ -24,6 +24,9 @@ from pygls.lsp.types import (
     DidCloseTextDocumentParams,
     DidChangeTextDocumentParams,
     ReferenceParams,
+    Location,
+    Position,
+    Range
 )
 
 DEFAULT_PORT = 3036
@@ -79,6 +82,33 @@ def replace_delims(line):
     for ch in delims:
         line = line.replace(ch, ' ')
     return line
+
+def isolate_token(line, pos):
+    if pos < 0 or pos > len(line):
+        return None
+    # Get the token at the position in the line indicated by pos
+    # 1. replace all delimiters with spaces
+    space_line = replace_delims(line)
+    # 2. find beginning of token
+    i = pos
+    while space_line[i] != ' ' and i > 0:
+        i = i - 1
+    # (adjust: i is probably pointing to a space now)
+    # (unless it went down to 0)
+    if space_line[i] == ' ':
+        i = i+1
+    # 3. find end of token
+    j = pos
+    while space_line[j] != ' ' and j < len(space_line)-1:
+        j = j + 1
+    # (adjust: j could be pointing at the end of the string now)
+    # (could be there is no space there)
+    if j == len(space_line)-1 and space_line[len(space_line)-1] != ' ':
+        j = j + 1
+    # return the substring
+    return line[i:j]
+    
+    
 
 def do_indexing(text_document):
     path = text_document.uri.split('//')
@@ -209,14 +239,47 @@ def main():
         """Text document references request."""
         print(f"References request received uri: {params.text_document.uri}")
         print(f"position (line,char): {params.position.line},{params.position.character}")
+        current_line = ""
+        current_token = ""
+        locations = []
         if params.text_document.uri in current_documents:
-             text_document = current_documents[params.text_document.uri]
-             text  = text_document.text
-             lines = text.splitlines()
-             line = lines[params.position.line]
-             print(f"seeing this line there: {line}")
-        print(params)
-        return None
+            text_document = current_documents[params.text_document.uri]
+            text  = text_document.text
+            lines = text.splitlines()
+            current_line = lines[params.position.line]
+            print(f"seeing this line there: {current_line}")
+            current_token = isolate_token(current_line, params.position.character)
+            if current_token == None or len(current_token) == 0:
+               print("Unable to isolate a token.")
+               return locations
+        else:
+             print("document not in current documents store.")
+             print("Should load it?")
+             return locations
+
+        if params.text_document.uri in current_indexes:
+             index = current_documents[params.text_document.uri]
+             refs = index.xref[current_token]
+             if refs == None or len(refs) == 0:
+                 print(f"don't see any refs for {current_token}")
+                 return locations
+             for ref in refs:
+                 print(f"ref: {ref}")
+                 location = Location(
+                     uri = params.text_document.uri,
+                     range = Range(
+                         start = Position(line = params.position.line,
+                                          character = current_line.find(current_token)),
+                         end = Position(line = params.position.line,
+                                          character = current_line.find(current_token) + len(current_token))))
+                 locations.append(location)
+        else:
+             print("document not in current index store.")
+             print("Could load and index it.")
+             return locations
+
+        #print(params)
+        return locations
 
     # Spawn the server.
     if args.stdio:
