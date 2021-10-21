@@ -51,7 +51,19 @@
 				"scopeName": "source.x86",
 				"path": "./syntaxes/gas.tmLanguage"
 			}
-		]
+		],
+		"configuration": {
+			"type": "object",
+			"title": "GTIRB Server Configuration",
+			"properties": {
+			  "gtirbServer.exampleConfiguration": {
+				"scope": "resource",
+				"type": "string",
+				"default": "You can override this message."
+			  }
+			}
+		}
+	  
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

@@ -8,7 +8,7 @@ import argparse
 import gtirb
 import re
 from collections import defaultdict
-from typing import List, Text, Tuple
+from typing import List, Optional, Union
 from pygls.server import LanguageServer
 from pygls.protocol import LanguageServerProtocol
 from pygls.lsp.methods import (
@@ -16,6 +16,7 @@ from pygls.lsp.methods import (
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_SAVE,
     TEXT_DOCUMENT_DID_CHANGE,
+    DEFINITION,
     REFERENCES
 )
 from pygls.lsp.types import (
@@ -23,19 +24,38 @@ from pygls.lsp.types import (
     DidSaveTextDocumentParams,
     DidCloseTextDocumentParams,
     DidChangeTextDocumentParams,
-    ReferenceParams,
     Location,
+    LocationLink,
     Position,
-    Range
+    Range,
+    DefinitionParams,
+    DefinitionOptions,
+    ReferenceParams,
+    ReferenceOptions,
+    ReferenceContext
 )
 
 DEFAULT_PORT = 3036
 DEFAULT_TCP_FLAG = True
 DEFAULT_STDIO_FLAG = False
 
-current_documents = {} # not sure defaultdict would support factory of TextDocument?
-current_indexes = {} # not sure defaultdict would support factory of TextDocument?
+StringList = List[str]
+LocationList = List[Location]
 
+current_indexes = {} # not sure defaultdict would support factory of TextDocument?
+current_documents = {} # not sure defaultdict would support factory of TextDocument?
+
+#
+# Local class allows addition  of a configuration section
+# See pygls example: json language server
+class GtirbLanguageServer(LanguageServer):
+    CONFIGURATION_SECTION = 'gtirbServer'
+
+    def __init__(self):
+        super().__init__()
+
+#
+# Don't think I want this
 class NonTerminatingLanguageServerProtocol(LanguageServerProtocol):
     """
     language server protocol implementation which ignores
@@ -53,15 +73,15 @@ class NonTerminatingLanguageServerProtocol(LanguageServerProtocol):
 
 class Index:
 
-    def __init__ (self, gtirb, asm, xref, defs):
-        self.gtirb = gtirb
+    def __init__ (self, gtirbfile, asm, xref, defs):
+        self.gtirbfile = gtirbfile
         self.asm = asm
         self.xref = xref
         self.defs = defs
 
     def dump_to_file (self, json_filename):
         x = {
-            "gtirb": self.gtirb,
+            "gtirb": self.gtirbfile,
             "asm": self.asm,
             "xref": self.xref,
             "defs": self.defs
@@ -107,8 +127,7 @@ def isolate_token(line, pos):
         j = j + 1
     # return the substring
     return line[i:j]
-    
-    
+
 
 def do_indexing(text_document):
     path = text_document.uri.split('//')
@@ -144,7 +163,7 @@ def do_indexing(text_document):
     #
     # Process the assembly code line by line
     defs = {}
-    refs = defaultdict(list)
+    xref = defaultdict(list)
     for i, line in enumerate(lines):
         if def_search.match(line) != None:
             defined_symbol = line[:-1]
@@ -157,9 +176,9 @@ def do_indexing(text_document):
         for word in replace_delims(line).split():
             if word in symlist:
                 #print("found reference to %s at line %d" % (word, i))
-                refs[word].append(i)
+                xref[word].append(i)
 
-    index = Index(gtirbfile, asmfile, refs, defs)
+    index = Index(gtirbfile, asmfile, xref, defs)
     index.dump_to_file(jsonfile) 
 
     #
@@ -192,10 +211,12 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
-    if args.stdio:
-        server = LanguageServer()
-    else:
-        server = LanguageServer(protocol_cls=NonTerminatingLanguageServerProtocol)
+    #if args.stdio:
+    #    server = LanguageServer()
+    #else:
+    #   server = LanguageServer(protocol_cls=NonTerminatingLanguageServerProtocol)
+    # Use local class inheriting from LanguageServer, and drop the NonTerm
+    server = GtirbLanguageServer()
 
     @server.feature(TEXT_DOCUMENT_DID_CHANGE)
     def did_change(ls, params: DidChangeTextDocumentParams):
@@ -232,54 +253,114 @@ def main():
             #del current_documents[params.text_document.uri]
             ls.show_message("document is in current list, you should have removed it just now?")
 
-
-    # returns Optional[List[Location]]
-    @server.feature(REFERENCES)
-    async def get_references(ls, params: ReferenceParams):
-        """Text document references request."""
-        print(f"References request received uri: {params.text_document.uri}")
+    @server.feature(DEFINITION, DefinitionOptions())
+    def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, List[Location], List[LocationLink]]]:
+        """Text document definition request."""
+        print(f"Definition request received uri: {params.text_document.uri}")
         print(f"position (line,char): {params.position.line},{params.position.character}")
-        current_line = ""
-        current_token = ""
-        locations = []
+        current_line: str = ""
+        current_text: str = ""
+        current_token: str = ""
+        current_lines: StringList = []
         if params.text_document.uri in current_documents:
             text_document = current_documents[params.text_document.uri]
-            text  = text_document.text
-            lines = text.splitlines()
-            current_line = lines[params.position.line]
+            current_text = text_document.text
+            current_lines = current_text.splitlines()
+            current_line = current_lines[params.position.line]
             print(f"seeing this line there: {current_line}")
             current_token = isolate_token(current_line, params.position.character)
             if current_token == None or len(current_token) == 0:
-               print("Unable to isolate a token.")
-               return locations
+                print("Unable to isolate a token.")
+                return None
+            else:
+                print(f"current token: {current_token}")
         else:
-             print("document not in current documents store.")
-             print("Should load it?")
-             return locations
+            print("document not in current documents store.")
+            print("Should load it?")
+            return None
 
         if params.text_document.uri in current_indexes:
-             index = current_documents[params.text_document.uri]
-             refs = index.xref[current_token]
-             if refs == None or len(refs) == 0:
-                 print(f"don't see any refs for {current_token}")
-                 return locations
-             for ref in refs:
-                 print(f"ref: {ref}")
-                 location = Location(
-                     uri = params.text_document.uri,
-                     range = Range(
-                         start = Position(line = params.position.line,
-                                          character = current_line.find(current_token)),
-                         end = Position(line = params.position.line,
-                                          character = current_line.find(current_token) + len(current_token))))
-                 locations.append(location)
+            index = current_indexes[params.text_document.uri]
+            if current_token in index.defs:
+                adef = index.defs[current_token]
+            else:
+                print(f"don't see any defs for {current_token}")
+                return None
+            #Expecting only one def
+            print(f"a def: {adef}")
+            definition_line: str = current_lines[adef]
+            print(f"this reference line: {definition_line}")
+            location = Location(
+                uri = params.text_document.uri,
+                range = Range(
+                    start = Position(line = adef,
+                        character = definition_line.find(current_token)),
+                    end = Position(line = adef,
+                        character = definition_line.find(current_token) + len(current_token))))
         else:
-             print("document not in current index store.")
-             print("Could load and index it.")
-             return locations
+            print("document not in current index store.")
+            print("Could load and index it.")
+            return None
 
         #print(params)
-        return locations
+        return location 
+
+# remove async ? test code does not have.
+#    async def get_references(ls, params: ReferenceParams):
+    # returns Optional[List[Location]]
+    @server.feature(REFERENCES, ReferenceOptions())
+    def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
+        """Text document references request."""
+        print(f"References request received uri: {params.text_document.uri}")
+        print(f"position (line,char): {params.position.line},{params.position.character}")
+        # put decl here so they func-global, will need them later
+        # "current_text" is the text of the whole document
+        current_line: str = ""
+        current_text: str = ""
+        current_token: str = ""
+        current_lines: StringList = []
+        locations: LocationList = []
+        if params.text_document.uri in current_documents:
+            text_document = current_documents[params.text_document.uri]
+            current_text = text_document.text
+            current_lines = current_text.splitlines()
+            current_line = current_lines[params.position.line]
+            print(f"seeing this line there: {current_line}")
+            current_token = isolate_token(current_line, params.position.character)
+            if current_token == None or len(current_token) == 0:
+                print("Unable to isolate a token.")
+                return None
+            else:
+                print(f"current token: {current_token}")
+        else:
+            print("document not in current documents store.")
+            print("Should load it?")
+            return None
+
+        if params.text_document.uri in current_indexes:
+            index = current_indexes[params.text_document.uri]
+            refs = index.xref[current_token]
+            if refs == None or len(refs) == 0:
+                print(f"don't see any refs for {current_token}")
+                return None
+            for ref in refs:
+                print(f"ref: {ref}")
+                reference_line: str = current_lines[ref]
+                print(f"this reference line: {reference_line}")
+                locations.append(Location(
+                    uri = params.text_document.uri,
+                    range = Range(
+                        start = Position(line = ref,
+                            character = reference_line.find(current_token)),
+                        end = Position(line = ref,
+                            character = reference_line.find(current_token) + len(current_token)))))
+        else:
+            print("document not in current index store.")
+            print("Could load and index it.")
+            return None
+
+        #print(params)
+        return locations 
 
     # Spawn the server.
     if args.stdio:
