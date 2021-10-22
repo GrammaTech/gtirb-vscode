@@ -1,10 +1,10 @@
-# GTIRB Loader
+# GTIRB GUI
 
-Heavily documented sample code for https://code.visualstudio.com/api/language-extensions/language-server-extension-guide
+A VSCode extension for viewing and navigation GTIRB, Grammatech's IR for Binaries.
 
 ## Functionality
 
-This extension will load a GTIRB (Grammatech IR for Binaries) file and display an assembly file listing of the file contents.
+This extension will load a GTIRB file and display an assembly file listing of the file contents.
 
 ## Running the Sample
 
@@ -12,7 +12,7 @@ This extension will load a GTIRB (Grammatech IR for Binaries) file and display a
 - Open VS Code on this folder.
 - Press Ctrl+Shift+B to compile the loader
 - Switch to the Debug viewlet.
-- Select `Launch Extension` from the drop down.
+- Select `Launch Client+Server` from the drop down.
 - Run the launch config.
 - In the [Extension Development Host] instance of VSCode, open a folder with a ".gtirb" file in it and lick the file in file explorer.
   - If GT X86/64 or MIPS  extensions are installed you should see proper syntax highlighting and be able to find all references and definitions for a selected token.

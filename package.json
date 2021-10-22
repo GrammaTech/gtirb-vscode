@@ -1,85 +1,104 @@
 {
-	"name": "vscode-gtirb-loader",
-	"displayName": "GTIRB Loader",
-	"description": "Load GTIRB files",
-	"version": "0.0.1",
-	"publisher": "grammatech",
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "https://git.grammatech.com/tneale/vscode-gtirb-loader"
-	},
-	"engines": {
-		"vscode": "^1.52.0"
-	},
-	"categories": [
-		"Programming Languages"
-	],
-	"activationEvents": [
-		"onCustomEditor:gtirb-loader.gtirb"
-	],
-	"main": "./out/extension.js",
-	"contributes": {
-		"customEditors": [
-			{
-				"viewType": "gtirb-loader.gtirb",
-				"displayName": "GTIRB",
-				"selector": [
-					{
-						"filenamePattern": "*.gtirb"
-					}
-				]
-			}
-		],
-		"languages": [
-			{
-				"id": "gtgas",
-				"aliases": [
-					"GTIRB GAS/AT&T x86/x64",
-					"gtgas"
-				],
-				"extensions": [
-					".gtx64",
-					".gtx86"
-				],
-				"configuration": "./language-configuration.json"
-			}
-		],
-		"grammars": [
-			{
-				"language": "gtgas",
-				"scopeName": "source.x86",
-				"path": "./syntaxes/gas.tmLanguage"
-			}
-		],
-		"configuration": {
-			"type": "object",
-			"title": "GTIRB Server Configuration",
-			"properties": {
-			  "gtirbServer.exampleConfiguration": {
-				"scope": "resource",
-				"type": "string",
-				"default": "You can override this message."
-			  }
-			}
-		}
-	  
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./",
-		"lint": "eslint . --ext .ts,.tsx",
-		"watch": "tsc -w -p ./"
-	},
-	"dependencies": {
-		"vscode-languageclient": "^7.0.0"
-	},
-	"devDependencies": {
-		"@types/node": "^12.12.0",
-		"@types/vscode": "^1.52.0",
-		"@typescript-eslint/eslint-plugin": "^4.16.0",
-		"@typescript-eslint/parser": "^4.16.0",
-		"eslint": "^7.21.0",
-		"typescript": "^4.3.5"
-	}
+    "name": "vscode-gtirb-loader",
+    "displayName": "GTIRB Loader",
+    "description": "Load GTIRB files",
+    "version": "0.0.1",
+    "publisher": "grammatech",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://git.grammatech.com/tneale/vscode-gtirb-loader"
+    },
+    "engines": {
+        "vscode": "^1.52.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+        "icon": "gticon.png",
+    "activationEvents": [
+        "onCustomEditor:gtirb-loader.gtirb",
+        "workspaceContains:*.gtirb.gtx64",
+        "workspaceContains:*.gtirb.gtmips"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "customEditors": [
+            {
+                "viewType": "gtirb-loader.gtirb",
+                "displayName": "GTIRB",
+                "selector": [
+                    {
+                        "filenamePattern": "*.gtirb"
+                    }
+                ]
+            }
+        ],
+        "languages": [
+            {
+                "id": "gtgas",
+                "aliases": [
+                    "GTIRB GAS/AT&T x86/x64",
+                    "gtgas"
+                ],
+                "extensions": [
+                    ".gtx64",
+                    ".gtx86"
+                ],
+                "configuration": "./gtgas-language-configuration.json"
+            },
+            {
+                "id": "gtmips",
+                "aliases": [
+                    "GTIRB MIPS assembly",
+                    "gtmips"
+                ],
+                "extensions": [
+                    ".gtmips"
+                ],
+                "configuration": "./gtmips-language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "gtgas",
+                "scopeName": "source.x86",
+                "path": "./syntaxes/gas.tmLanguage"
+            },
+            {
+                "language": "gtmips",
+                "scopeName": "source.mips",
+                "path": "./syntaxes/mips.tmLanguage"
+            }
+
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "GTIRB Server Configuration",
+            "properties": {
+                "gtirbServer.exampleConfiguration": {
+                    "scope": "resource",
+                    "type": "string",
+                    "default": "You can override this message."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "lint": "eslint . --ext .ts,.tsx",
+        "watch": "tsc -w -p ./"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^7.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^12.12.0",
+        "@types/vscode": "^1.52.0",
+        "@typescript-eslint/eslint-plugin": "^4.16.0",
+        "@typescript-eslint/parser": "^4.16.0",
+        "eslint": "^7.21.0",
+        "typescript": "^4.3.5"
+    }
 }

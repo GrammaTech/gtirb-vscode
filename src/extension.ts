@@ -19,8 +19,9 @@ function getClientOptions(): LanguageClientOptions {
         documentSelector: [
             //{ scheme: "file", language: "json" },
             { scheme: "file", language: "gtgas" },
+            { scheme: "file", language: "gtmips" },
         ],
-        outputChannelName: "[pygls] gtgas LanguageServer",
+        outputChannelName: "[pygls] GTIRB LanguageServer",
         synchronize: {
             // Notify the server about file changes to '.clientrc files contain in the workspace
             fileEvents: vscode.workspace.createFileSystemWatcher("**/.clientrc"),
