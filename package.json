@@ -15,11 +15,11 @@
     "categories": [
         "Programming Languages"
     ],
-        "icon": "gticon.png",
+    "icon": "gticon.png",
     "activationEvents": [
         "onCustomEditor:gtirb-loader.gtirb",
-        "workspaceContains:*.gtirb.gtx64",
-        "workspaceContains:*.gtirb.gtmips"
+        "onLanguage:gtgas",
+        "onLanguage:gtmips"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -41,9 +41,12 @@
                     "GTIRB GAS/AT&T x86/x64",
                     "gtgas"
                 ],
+                "filenamePatterns": [
+                    "*.gtasm",
+                    "*x64*"
+                ],
                 "extensions": [
-                    ".gtx64",
-                    ".gtx86"
+                    ".gtasm"
                 ],
                 "configuration": "./gtgas-language-configuration.json"
             },
@@ -53,8 +56,12 @@
                     "GTIRB MIPS assembly",
                     "gtmips"
                 ],
+                "filenamePatterns": [
+                    "*.gtasm",
+                    "*mips*"
+                ],
                 "extensions": [
-                    ".gtmips"
+                    ".gtasm"
                 ],
                 "configuration": "./gtmips-language-configuration.json"
             }
@@ -70,7 +77,6 @@
                 "scopeName": "source.mips",
                 "path": "./syntaxes/mips.tmLanguage"
             }
-
         ],
         "configuration": {
             "type": "object",

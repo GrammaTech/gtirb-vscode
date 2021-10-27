@@ -15,9 +15,8 @@ let client: LanguageClient;
 
 function getClientOptions(): LanguageClientOptions {
     return {
-        // Register the server for plain text documents
+        // Register the server for GT assembly documents
         documentSelector: [
-            //{ scheme: "file", language: "json" },
             { scheme: "file", language: "gtgas" },
             { scheme: "file", language: "gtmips" },
         ],
@@ -28,6 +27,7 @@ function getClientOptions(): LanguageClientOptions {
         },
     };
 }
+
 
 function isStartedInDebugMode(): boolean {
     return process.env.VSCODE_DEBUG_MODE === "true";
@@ -67,12 +67,11 @@ function startLangServer(
     return new LanguageClient(command, serverOptions, getClientOptions());
 }
 
+
 export function activate(context: vscode.ExtensionContext) {
     if (isStartedInDebugMode()) {
-        // Development - Run the server manually
         client = startLangServerTCP(3036);
     } else {
-        // Production - Client is going to run the server (for use within `.vsix` package)
         const cwd = path.join(__dirname, "..");
         const pythonPath = vscode.workspace
             .getConfiguration("python")
@@ -85,12 +84,13 @@ export function activate(context: vscode.ExtensionContext) {
         client = startLangServer(pythonPath, ["-m", "server"], cwd);
     }
 
-    context.subscriptions.push(client.start());
     // Register our custom editor providers
+    context.subscriptions.push(client.start());
     context.subscriptions.push(GtirbEditorProvider.register(context));
 }
 
 
 export function deactivate(): Thenable<void> {
+    //client.sendRequest("exit"); (needed?)
     return client ? client.stop() : Promise.resolve();
 }

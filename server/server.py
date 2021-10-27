@@ -100,24 +100,34 @@ def isolate_token(line: str, pos: int) -> str:
 
 
 def do_indexing(text_document):
-    path = text_document.uri.split('//')
+    path_list = text_document.uri.split('//')
+
+
     lines = text_document.text.splitlines()
 
-    if len(path) > 1 and path[0] == 'file:':
-        asmfile = path[1]
-        gtirbfile = os.path.splitext(asmfile)[0];
-        jsonfile = asmfile+'.json'
+    if len(path_list) > 1 and path_list[0] == 'file:':
+        asmfile = path_list[1]
+        cachedir = os.path.dirname(os.path.dirname(asmfile))
+        cachedir_base = os.path.basename(cachedir)
+        if cachedir_base.startswith(".vscode."):
+            gtirbfile_base = cachedir_base[8:]
+            print(f"gtirb file name: {gtirbfile_base}")
+            gtirbfile = os.path.join(os.path.dirname(cachedir), gtirbfile_base)
+            print(f"gtirbfile: {gtirbfile}")
+#
+#        gtirbfile = os.path.splitext(asmfile)[0];
+            jsonfile = asmfile+'.json'
     else:
-        #print(f"error in text document path: {text_document.uri}")
+        print(f"error in text document path: {text_document.uri}")
         return
 
-    #
+    # 
     # Get list of symbols from GTIRB file
     try:
         ir = gtirb.IR.load_protobuf(gtirbfile)
     except Exception as inst:
-        #print(inst)
-        #print("Unable to load gtirb file %s." % gtirbfile)
+        print(inst)
+        print("Unable to load gtirb file %s." % gtirbfile)
         return
 
     modules = ir.modules
@@ -178,11 +188,12 @@ async def did_open(ls, params: DidOpenTextDocumentParams):
     #print(splitpath)
 
     # This is where to check the extension
-    if ext == '.gtx86' or ext == '.gtx64' or ext == '.gtmips' or ext == '.gtarm':
+    #if ext == '.gtx86' or ext == '.gtx64' or ext == '.gtmips' or ext == '.gtarm':
+    if ext == '.gtasm':
         current_documents[params.text_document.uri] = params.text_document
-        #print('Added to document list')
+        print('Added to document list')
         do_indexing(params.text_document)
-        #print('finished indexing')
+        print('finished indexing')
 
 
 @server.feature(TEXT_DOCUMENT_DID_CLOSE)

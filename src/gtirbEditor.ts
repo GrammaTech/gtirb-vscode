@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { getNonce } from './util';
 import { Disposable } from './dispose';
+import * as path from 'path';
 
 import * as cp from 'child_process';
 import * as fs from 'fs';
@@ -48,22 +49,46 @@ const execShell = (cmd: string) =>
 	public readonly onDidDispose = this._onDidDispose.event;
   
 	dispose(): void {
-		const path: string = this._uri.fsPath;
-		const x64AssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtx64'));
-		const mipsAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtmips'));
-		const armAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtarm'));
+		const parsedPath = path.parse(this._uri.fsPath);
+		const cachePath = path.join(parsedPath.dir, '.vscode.'.concat(parsedPath.base));
+
+		const x64CachePath = path.join(cachePath, 'x64');
+		const x64AsmPath = path.join(x64CachePath, parsedPath.name.concat('.gtasm'));
+
+		const mipsCachePath = path.join(cachePath, 'mips');
+		const mipsAsmPath = path.join(mipsCachePath, parsedPath.name.concat('.gtasm'));
+
+		const armCachePath = path.join(cachePath, 'arm');
+		const armAsmPath = path.join(armCachePath, parsedPath.name.concat('.gtasm'));
+
+		//const x64File = path.join(x64Cache, gtirbFile);
+		//const x64AssemblyFile: vscode.Uri = vscode.Uri.file(x64File.concat('.gtasm'));
+
+		//const mipsCache: string = path.join(cachePath, 'mips');
+		//const mipsFile = path.join(mipsCache, gtirbFile);
+		//const mipsAssemblyFile: vscode.Uri = vscode.Uri.file(mipsFile.concat('.gtasm'));
+
+		//const armCache: string = path.join(cachePath, 'mips');
+		//const armFile = path.join(armCache, gtirbFile);
+		//const armAssemblyFile: vscode.Uri = vscode.Uri.file(armFile.concat('.gtasm'));
+
+		//const tryPath = path.join(x64Cache, parsedPath.name.concat('.gtasm'));
 		// Wait for text document
-		if (fs.existsSync(x64AssemblyFile.fsPath)) {
+		console.log(`looking for ${x64AsmPath}`);
+		console.log(`or ${mipsAsmPath}`);
+		console.log(`or ${armAsmPath}`);
+		//if (fs.existsSync(x64AssemblyFile.fsPath)) {
+		if (fs.existsSync(x64AsmPath)) {
 			try {
 				//vscode.workspace.fs.stat(x64AssemblyFile);
-				vscode.window.showTextDocument(x64AssemblyFile);
+				vscode.window.showTextDocument(vscode.Uri.file(x64AsmPath));
 			} catch {
-				vscode.window.showInformationMessage(`${x64AssemblyFile.toString(true)} does not exist`);
+				vscode.window.showInformationMessage(`${x64AsmPath} does not exist`);
 			}
-		} else	if (fs.existsSync(mipsAssemblyFile.fsPath)) {
-			vscode.window.showTextDocument(mipsAssemblyFile);
-		} else	if (fs.existsSync(armAssemblyFile.fsPath)) {
-			vscode.window.showTextDocument(armAssemblyFile);
+		} else	if (fs.existsSync(mipsAsmPath)) {
+			vscode.window.showTextDocument(vscode.Uri.file(mipsAsmPath));
+		} else	if (fs.existsSync(armAsmPath)) {
+			vscode.window.showTextDocument(vscode.Uri.file(armAsmPath));
 		}
         this._onDidDispose.fire();
         super.dispose();
