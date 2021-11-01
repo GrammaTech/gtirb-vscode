@@ -36,8 +36,8 @@ from pygls.lsp.types import (
 )
 
 DEFAULT_PORT = 3036
-DEFAULT_TCP_FLAG = True
-DEFAULT_STDIO_FLAG = False
+DEFAULT_TCP_FLAG = False
+DEFAULT_STDIO_FLAG = True
 
 StringList = List[str]
 LocationList = List[Location]
@@ -318,10 +318,10 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
     return locations 
 
 
-def gtirb_server(port: int) -> None:
+def gtirb_tcp_server(host: str, port: int) -> None:
+    server.start_tcp(host, port)
 
-    # Use local class inheriting from LanguageServer, and drop the NonTerm
-    # moved to file global so methods can reference it
-    #server = GtirbLanguageServer()
-    server.start_tcp("0.0.0.0", port)
+
+def gtirb_stdio_server() -> None:
+    server.start_io()
 

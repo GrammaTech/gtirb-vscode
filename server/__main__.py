@@ -2,11 +2,12 @@
 
 import logging
 import argparse
-from .server import gtirb_server
+from .server import gtirb_tcp_server, gtirb_stdio_server
 
 DEFAULT_PORT = 3036
-DEFAULT_TCP_FLAG = True
-DEFAULT_STDIO_FLAG = False
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_TCP_FLAG = False
+DEFAULT_STDIO_FLAG = True
 
 def main():
 
@@ -16,6 +17,12 @@ def main():
         action="store_true",
         default=DEFAULT_TCP_FLAG,
         help="Run server in TCP mode.",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default=DEFAULT_HOST,
+        help="Server IP addr",
     )
     parser.add_argument(
         "--port",
@@ -33,7 +40,10 @@ def main():
 
     args = parser.parse_args()
     logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
-    gtirb_server(port = args.port)
+    if args.tcp:
+        gtirb_tcp_server(host = args.host, port = args.port)
+    else:
+        gtirb_stdio_server()
 
 if __name__ == "__main__":
     main()
