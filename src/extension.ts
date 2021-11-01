@@ -33,11 +33,11 @@ function isStartedInDebugMode(): boolean {
     return process.env.VSCODE_DEBUG_MODE === "true";
 }
 
-function startLangServerTCP(addr: number): LanguageClient {
+function startLangServerTCP(port: number, hostAddr: string): LanguageClient {
     const serverOptions: ServerOptions = () => {
         return new Promise((resolve /*, reject */) => {
             const clientSocket = new net.Socket();
-            clientSocket.connect(addr, "127.0.0.1", () => {
+            clientSocket.connect(port, hostAddr, () => {
                 resolve({
                     reader: clientSocket,
                     writer: clientSocket,
@@ -47,7 +47,8 @@ function startLangServerTCP(addr: number): LanguageClient {
     };
 
     return new LanguageClient(
-        `tcp lang server (port ${addr})`,
+        'gtirbServer',
+        `tcp lang server (port ${port})`,
         serverOptions,
         getClientOptions()
     );
@@ -70,7 +71,9 @@ function startLangServer(
 
 export function activate(context: vscode.ExtensionContext) {
     if (isStartedInDebugMode()) {
-        client = startLangServerTCP(3036);
+        const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
+        const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
+        client = startLangServerTCP(port!, hostAddr!);
     } else {
         const cwd = path.join(__dirname, "..");
         const pythonPath = vscode.workspace

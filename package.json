@@ -82,10 +82,20 @@
             "type": "object",
             "title": "GTIRB Server Configuration",
             "properties": {
-                "gtirbServer.exampleConfiguration": {
+                "gtirb.server.host": {
+                    "type": "string",
+                    "description": "IP address of server.",
+                    "default": "localhost"
+                },
+                "gtirb.server.port": {
+                    "type": "number",
+                    "description": "Port to connect to.",
+                    "default": 3036
+                },
+                "gtirb.exampleConfiguration": {
                     "scope": "resource",
                     "type": "string",
-                    "default": "You can override this message."
+                    "default": "Example message."
                 }
             }
         }
