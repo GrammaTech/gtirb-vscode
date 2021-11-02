@@ -1,4 +1,3 @@
-#!/usr/bin/env python3 
 # -*- coding: utf-8 -*- 
 
 import os
@@ -35,6 +34,8 @@ from pygls.lsp.types import (
     ReferenceContext
 )
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_PORT = 3036
 DEFAULT_TCP_FLAG = False
 DEFAULT_STDIO_FLAG = True
@@ -57,13 +58,12 @@ class GtirbLanguageServer(LanguageServer):
 
 class Index:
 
-    def __init__ (self, gtirbfile, asm, xref, defs):
+    def __init__ (self, gtirbfile=None, asm=None, xref=None, defs=None):
         self.gtirbfile = gtirbfile
         self.asm = asm
         self.xref = xref
         self.defs = defs
 
-    # move this so that a server show_message call is available
     def dump_to_file (self, json_filename):
         x = {
             "gtirb": self.gtirbfile,
@@ -72,13 +72,23 @@ class Index:
             "defs": self.defs
         }
         try:
-            with open(json_filename, "w") as out:
-                json.dump(x, out, indent=4)
+            with open(json_filename, "w") as outfile:
+                json.dump(x, outfile, indent=4)
         except Exception as inst:
-            #print(inst)
-            #print("Unable to write cross-reference file %s." % json_filename)
-            quit()
-        #print("\nWrote cross reference file: %s.\n" % json_filename)
+            logger.error(f"unable to write to JSON file: {json_filename}")
+
+    def load_from_file (self, json_filename):
+        try:
+            with open(json_filename) as infile:
+                x = json.load(infile)
+        except Exception as inst:
+            logger.error(f"unable to read from JSON file: {json_filename}")
+        else:
+            self.gtirbfile = x["gtirb"]
+            self.asm = x["asm"]
+            self.xref = x["xref"]
+            self.defs = x["defs"]
+
 
 #
 # chars to strip out so as to leave a line consisting of actual tokens
@@ -102,7 +112,6 @@ def isolate_token(line: str, pos: int) -> str:
 def do_indexing(text_document):
     path_list = text_document.uri.split('//')
 
-
     lines = text_document.text.splitlines()
 
     if len(path_list) > 1 and path_list[0] == 'file:':
@@ -111,55 +120,56 @@ def do_indexing(text_document):
         cachedir_base = os.path.basename(cachedir)
         if cachedir_base.startswith(".vscode."):
             gtirbfile_base = cachedir_base[8:]
-            print(f"gtirb file name: {gtirbfile_base}")
             gtirbfile = os.path.join(os.path.dirname(cachedir), gtirbfile_base)
-            print(f"gtirbfile: {gtirbfile}")
-#
-#        gtirbfile = os.path.splitext(asmfile)[0];
+            logger.info(f"gtirbfile: {gtirbfile}")
             jsonfile = asmfile+'.json'
     else:
-        print(f"error in text document path: {text_document.uri}")
+        logger.error(f"error in text document path: {text_document.uri}")
         return
 
-    # 
-    # Get list of symbols from GTIRB file
-    try:
-        ir = gtirb.IR.load_protobuf(gtirbfile)
-    except Exception as inst:
-        print(inst)
-        print("Unable to load gtirb file %s." % gtirbfile)
-        return
+    if os.path.exists(jsonfile):
+        logger.info(f"Reusing indexing from JSON file: {jsonfile}")
+        index = Index()
+        index.load_from_file(jsonfile)
 
-    modules = ir.modules
-    module = next(iter(modules))
-    symbols = module.symbols
-    symlist = []
-    for symbol in symbols:
-        symlist.append(symbol.name)
+    else:
 
-    # if this is a definition, a symbol followed by a colon is the whole line
-    def_search = re.compile('^.*:$')
-
-    #
-    # Process the assembly code line by line
-    defs = {}
-    xref = defaultdict(list)
-    for i, line in enumerate(lines):
-        if def_search.match(line) != None:
-            defined_symbol = line[:-1]
-            #print("looking for %s..." % defined_symbol)
-            if defined_symbol in symlist:
-                defs[defined_symbol] = i
-                #print("found def of %s at %d" % (defined_symbol, i))
+        # 
+        # Get list of symbols from GTIRB file
+        try:
+            ir = gtirb.IR.load_protobuf(gtirbfile)
+        except Exception as inst:
+            logger.error(inst)
+            logger.error("Unable to load gtirb file %s." % gtirbfile)
+            return
     
-        # parse the tokens to see if any are a symbol
-        for word in replace_delims(line).split():
-            if word in symlist:
-                #print("found reference to %s at line %d" % (word, i))
-                xref[word].append(i)
+        modules = ir.modules
+        module = next(iter(modules))
+        symbols = module.symbols
+        symlist = []
+        for symbol in symbols:
+            symlist.append(symbol.name)
 
-    index = Index(gtirbfile, asmfile, xref, defs)
-    index.dump_to_file(jsonfile) 
+        # if this is a definition, a symbol followed by a colon is the whole line
+        def_search = re.compile('^.*:$')
+
+        #
+        # Process the assembly code line by line
+        defs = {}
+        xref = defaultdict(list)
+        for i, line in enumerate(lines):
+            if def_search.match(line) != None:
+                defined_symbol = line[:-1]
+                if defined_symbol in symlist:
+                    defs[defined_symbol] = i
+    
+            # parse the tokens to see if any are a symbol
+            for word in replace_delims(line).split():
+                if word in symlist:
+                    xref[word].append(i)
+
+        index = Index(gtirbfile, asmfile, xref, defs)
+        index.dump_to_file(jsonfile) 
 
     #
     # Add to current indexes
@@ -171,44 +181,38 @@ server = GtirbLanguageServer()
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
 def did_change(ls, params: DidChangeTextDocumentParams):
     """Text document did change notification."""
-    print(f"Text Document Did Change notification, uri: {params.text_document.uri}")
+    logger.info(f"Text Document Did Change notification, uri: {params.text_document.uri}")
     # extraneous # return None
 
 
 @server.feature(TEXT_DOCUMENT_DID_OPEN)
 async def did_open(ls, params: DidOpenTextDocumentParams):
     """Text document did open notification."""
-    print(f"Text Document Did Open notification, uri: {params.text_document.uri}")
-    #print(params)
-    #ext = os.path.splitext(params.text_document.uri)[1];
+    logger.info(f"Text Document Did Open notification, uri: {params.text_document.uri}")
     splitpath = os.path.splitext(params.text_document.uri)
     ext = splitpath[1]
-    #print(f"scheme: {splitpath[0]}")
-    #print(f"ext: {ext}")
-    #print(splitpath)
 
     # This is where to check the extension
     #if ext == '.gtx86' or ext == '.gtx64' or ext == '.gtmips' or ext == '.gtarm':
     if ext == '.gtasm':
         current_documents[params.text_document.uri] = params.text_document
-        print('Added to document list')
+        logger.info('Added to document list')
         do_indexing(params.text_document)
-        print('finished indexing')
+        logger.info('finished indexing')
 
 
 @server.feature(TEXT_DOCUMENT_DID_CLOSE)
 def did_close(ls, params: DidCloseTextDocumentParams):
     """Text document did close notification."""
-    print(f"Text Document Did Close notification, uri: {params.text_document.uri}")
+    logger.info(f"Text Document Did Close notification, uri: {params.text_document.uri}")
     if params.text_document.uri in current_documents:
         #del current_documents[params.text_document.uri]
-        print("document is in current list, you should have removed it just now?")
+        logger.info("document is in current list, you should have removed it just now?")
 
 @server.feature(DEFINITION, DefinitionOptions())
 def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, List[Location], List[LocationLink]]]:
     """Text document definition request."""
-    print(f"Definition request received uri: {params.text_document.uri}")
-    #print(f"position (line,char): {params.position.line},{params.position.character}")
+    logger.info(f"Definition request received uri: {params.text_document.uri}")
     current_line: str = ""
     current_text: str = ""
     current_token: str = ""
@@ -218,16 +222,11 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
         current_text = text_document.text
         current_lines = current_text.splitlines()
         current_line = current_lines[params.position.line]
-        #print(f"seeing this line there: {current_line}")
         current_token = isolate_token(current_line, params.position.character)
         if current_token == None or len(current_token) == 0:
-            #print("Unable to isolate a token.")
             return None
-        #else:
-            #print(f"current token: {current_token}")
     else:
-        #print("document not in current documents store.")
-        #print("Should load it?")
+        #Load the cached index here if it exists?
         ls.show_message(f" document {params.text_document.uri} is not in the currrent document store.")
         return None
 
@@ -236,12 +235,9 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
         if current_token in index.defs:
             adef = index.defs[current_token]
         else:
-            #print(f"don't see any defs for {current_token}")
             return None
         #Expecting only one def
-        #print(f"a def: {adef}")
         definition_line: str = current_lines[adef]
-        #print(f"this reference line: {definition_line}")
         location = Location(
             uri = params.text_document.uri,
             range = Range(
@@ -250,12 +246,9 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
                 end = Position(line = adef,
                     character = definition_line.find(current_token) + len(current_token))))
     else:
-        #print("document not in current index store.")
-        #print("Could load and index it.")
         ls.show_message(f" document {params.text_document.uri} is not in the currrent index store.")
         return None
 
-    #print(params)
     return location 
 
 # remove async ? test code does not have.
@@ -264,8 +257,7 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
 @server.feature(REFERENCES, ReferenceOptions())
 def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
     """Text document references request."""
-    print(f"References request received uri: {params.text_document.uri}")
-    #print(f"position (line,char): {params.position.line},{params.position.character}")
+    logger.info(f"References request received uri: {params.text_document.uri}")
     # put decl here so they func-global, will need them later
     # "current_text" is the text of the whole document
     current_line: str = ""
@@ -278,16 +270,11 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         current_text = text_document.text
         current_lines = current_text.splitlines()
         current_line = current_lines[params.position.line]
-        #print(f"seeing this line there: {current_line}")
         current_token = isolate_token(current_line, params.position.character)
         if current_token == None or len(current_token) == 0:
-            #print("Unable to isolate a token.")
             return None
-        #else:
-            #print(f"current token: {current_token}")
     else:
-        #print("document not in current documents store.")
-        #print("Should load it?")
+        #Check if cache exists ono file system?
         ls.show_message(f" document {params.text_document.uri} is not in the currrent document store.")
         return None
 
@@ -295,12 +282,9 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         index = current_indexes[params.text_document.uri]
         refs = index.xref[current_token]
         if refs == None or len(refs) == 0:
-            #print(f"don't see any refs for {current_token}")
             return None
         for ref in refs:
-            #print(f"ref: {ref}")
             reference_line: str = current_lines[ref]
-            #print(f"this reference line: {reference_line}")
             locations.append(Location(
                 uri = params.text_document.uri,
                 range = Range(
@@ -309,12 +293,9 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
                     end = Position(line = ref,
                         character = reference_line.find(current_token) + len(current_token)))))
     else:
-        #print("document not in current index store.")
-        #print("Could load and index it.")
         ls.show_message(f" document {params.text_document.uri} is not in the currrent index store.")
         return None
 
-    #print(params)
     return locations 
 
 
