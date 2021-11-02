@@ -70,11 +70,11 @@ function startLangServer(
 
 
 export function activate(context: vscode.ExtensionContext) {
-    if (isStartedInDebugMode()) {
-        const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
-        const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
-        client = startLangServerTCP(port!, hostAddr!);
-    } else {
+    const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
+    const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
+
+    if (hostAddr === 'stdio') {
+
         const cwd = path.join(__dirname, "..");
         const pythonPath = vscode.workspace
             .getConfiguration("python")
@@ -85,6 +85,8 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         client = startLangServer(pythonPath, ["-m", "server"], cwd);
+    } else {
+        client = startLangServerTCP(port!, hostAddr!);
     }
 
     // Register our custom editor providers
