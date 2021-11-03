@@ -16,7 +16,8 @@ from pygls.lsp.methods import (
     TEXT_DOCUMENT_DID_SAVE,
     TEXT_DOCUMENT_DID_CHANGE,
     DEFINITION,
-    REFERENCES
+    REFERENCES,
+    HOVER
 )
 from pygls.lsp.types import (
     DidOpenTextDocumentParams,
@@ -31,7 +32,12 @@ from pygls.lsp.types import (
     DefinitionOptions,
     ReferenceParams,
     ReferenceOptions,
-    ReferenceContext
+    ReferenceContext,
+    Hover,
+    HoverOptions,
+    HoverParams,
+    MarkupKind,
+    MarkupContent
 )
 
 logger = logging.getLogger(__name__)
@@ -43,8 +49,8 @@ DEFAULT_STDIO_FLAG = True
 StringList = List[str]
 LocationList = List[Location]
 
-current_indexes = {} # not sure defaultdict would support factory of TextDocument?
-current_documents = {} # not sure defaultdict would support factory of TextDocument?
+current_indexes = {} 
+current_documents = {} 
 
 #
 # Local class allows addition  of a configuration section
@@ -58,18 +64,20 @@ class GtirbLanguageServer(LanguageServer):
 
 class Index:
 
-    def __init__ (self, gtirbfile=None, asm=None, xref=None, defs=None):
+    def __init__ (self, gtirbfile=None, asm=None, xref=None, defs=None, comments=None):
         self.gtirbfile = gtirbfile
         self.asm = asm
         self.xref = xref
         self.defs = defs
+        self.comments = comments
 
     def dump_to_file (self, json_filename):
         x = {
             "gtirb": self.gtirbfile,
             "asm": self.asm,
             "xref": self.xref,
-            "defs": self.defs
+            "defs": self.defs,
+            "comments": self.comments
         }
         try:
             with open(json_filename, "w") as outfile:
@@ -88,6 +96,23 @@ class Index:
             self.asm = x["asm"]
             self.xref = x["xref"]
             self.defs = x["defs"]
+            self.comments = x["comments"]
+
+
+def get_byte_interval_from_block(module, thisblock):
+    for section in module.sections:
+        for byte_interval in section.byte_intervals:
+            for block in byte_interval.blocks:
+                if (block == thisblock):
+                    return byte_interval
+    return None
+
+def get_block_address(module, block):
+    if type(block) is gtirb.block.CodeBlock or type(block) is gtirb.block.DataBlock:
+        byte_interval = get_byte_interval_from_block(module, block)
+        if byte_interval is not None:
+            return hex(byte_interval.address + block.offset)
+    return None
 
 
 #
@@ -150,13 +175,23 @@ def do_indexing(text_document):
         for symbol in symbols:
             symlist.append(symbol.name)
 
-        # if this is a definition, a symbol followed by a colon is the whole line
-        def_search = re.compile('^.*:$')
+        # Collect comments into the index also
+        comments = {}
+        try:
+            comment_entries = module.aux_data['comments']
+        except:
+            pass
+        else:
+            comment_entries_data = comment_entries.data
+            for key in comment_entries_data:
+                comment_addr = get_block_address(module, key.element_id)
+                comments[comment_addr] = comment_entries_data[key]
 
         #
         # Process the assembly code line by line
         defs = {}
         xref = defaultdict(list)
+        def_search = re.compile('^.*:$')
         for i, line in enumerate(lines):
             if def_search.match(line) != None:
                 defined_symbol = line[:-1]
@@ -168,7 +203,7 @@ def do_indexing(text_document):
                 if word in symlist:
                     xref[word].append(i)
 
-        index = Index(gtirbfile, asmfile, xref, defs)
+        index = Index(gtirbfile, asmfile, xref, defs, comments)
         index.dump_to_file(jsonfile) 
 
     #
@@ -193,8 +228,8 @@ async def did_open(ls, params: DidOpenTextDocumentParams):
     ext = splitpath[1]
 
     # This is where to check the extension
-    #if ext == '.gtx86' or ext == '.gtx64' or ext == '.gtmips' or ext == '.gtarm':
     if ext == '.gtasm':
+        # Maybe make this a store of split lines so only needs to be split once
         current_documents[params.text_document.uri] = params.text_document
         logger.info('Added to document list')
         do_indexing(params.text_document)
@@ -206,8 +241,9 @@ def did_close(ls, params: DidCloseTextDocumentParams):
     """Text document did close notification."""
     logger.info(f"Text Document Did Close notification, uri: {params.text_document.uri}")
     if params.text_document.uri in current_documents:
-        #del current_documents[params.text_document.uri]
-        logger.info("document is in current list, you should have removed it just now?")
+        del current_documents[params.text_document.uri]
+        del current_indexes[params.text_document.uri]
+        logger.info("removed document from list of current documents")
 
 @server.feature(DEFINITION, DefinitionOptions())
 def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, List[Location], List[LocationLink]]]:
@@ -227,7 +263,7 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
             return None
     else:
         #Load the cached index here if it exists?
-        ls.show_message(f" document {params.text_document.uri} is not in the currrent document store.")
+        ls.show_message(f" document {params.text_document.uri} is not in the current document store.")
         return None
 
     if params.text_document.uri in current_indexes:
@@ -246,7 +282,7 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
                 end = Position(line = adef,
                     character = definition_line.find(current_token) + len(current_token))))
     else:
-        ls.show_message(f" document {params.text_document.uri} is not in the currrent index store.")
+        ls.show_message(f" document {params.text_document.uri} is not in the current index store.")
         return None
 
     return location 
@@ -275,7 +311,7 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
             return None
     else:
         #Check if cache exists ono file system?
-        ls.show_message(f" document {params.text_document.uri} is not in the currrent document store.")
+        ls.show_message(f" document {params.text_document.uri} is not in the current document store.")
         return None
 
     if params.text_document.uri in current_indexes:
@@ -293,10 +329,60 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
                     end = Position(line = ref,
                         character = reference_line.find(current_token) + len(current_token)))))
     else:
-        ls.show_message(f" document {params.text_document.uri} is not in the currrent index store.")
+        ls.show_message(f" document {params.text_document.uri} is not in the current index store.")
         return None
 
     return locations 
+
+@server.feature(HOVER, HoverOptions())
+def get_hover(ls, params: HoverParams) -> Optional[Hover]:
+    logger.info(f"Hover request received uri: {params.text_document.uri}")
+    current_line: str = ""
+    current_lines: StringList = []
+    if params.text_document.uri in current_documents:
+        text_document = current_documents[params.text_document.uri]
+        current_text = text_document.text
+        current_lines = current_text.splitlines()
+        current_line = current_lines[params.position.line]
+        logger.info(f"Current line: {current_line}")
+    else:
+        return None
+
+    if params.text_document.uri in current_indexes:
+        current_index = current_indexes[params.text_document.uri]
+        comments = current_index.comments
+        logger.info(f"Found comment list")
+    else:
+        return None
+
+    #
+    # Looking for the address comment:
+    addr_re = re.compile("# EA: (0x[0-9a-f]+)$")
+    current_addr = None
+    if len(current_line) > 16:
+        m = addr_re.search(current_line)
+        if m:
+            current_addr = m[1]
+            logger.info(f"line has address: {current_addr}")
+        else:
+            logger.info(f"line does not have address string")
+            return None
+    else:
+        logger.info(f"line is too short to have an address string")
+        return None
+
+    comment = '(no comment here)'
+    if current_addr in comments:
+        logger.info(f"found match")
+        comment = comments[current_addr]
+
+    hover = Hover(
+        contents=MarkupContent(
+            kind=MarkupKind.PlainText,
+            value=comment
+        )
+    )
+    return hover
 
 
 def gtirb_tcp_server(host: str, port: int) -> None:
