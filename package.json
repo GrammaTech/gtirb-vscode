@@ -1,0 +1,120 @@
+{
+    "name": "gtirb-vscode",
+    "displayName": "GTIRB Loader",
+    "description": "Load GTIRB files",
+    "version": "0.0.1",
+    "publisher": "grammatech",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://git.grammatech.com/rewriting/gtirb-vscode"
+    },
+    "engines": {
+        "vscode": "^1.52.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "icon": "gticon.png",
+    "activationEvents": [
+        "onCustomEditor:gtirb-loader.gtirb",
+        "onLanguage:gtgas",
+        "onLanguage:gtmips"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "customEditors": [
+            {
+                "viewType": "gtirb-loader.gtirb",
+                "displayName": "GTIRB",
+                "selector": [
+                    {
+                        "filenamePattern": "*.gtirb"
+                    }
+                ]
+            }
+        ],
+        "languages": [
+            {
+                "id": "gtgas",
+                "aliases": [
+                    "GTIRB GAS/AT&T x86/x64",
+                    "gtgas"
+                ],
+                "filenamePatterns": [
+                    "*.gtasm",
+                    "*x64*"
+                ],
+                "extensions": [
+                    ".gtasm"
+                ],
+                "configuration": "./gtgas-language-configuration.json"
+            },
+            {
+                "id": "gtmips",
+                "aliases": [
+                    "GTIRB MIPS assembly",
+                    "gtmips"
+                ],
+                "filenamePatterns": [
+                    "*.gtasm",
+                    "*mips*"
+                ],
+                "extensions": [
+                    ".gtasm"
+                ],
+                "configuration": "./gtmips-language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "gtgas",
+                "scopeName": "source.x86",
+                "path": "./syntaxes/gas.tmLanguage"
+            },
+            {
+                "language": "gtmips",
+                "scopeName": "source.mips",
+                "path": "./syntaxes/mips.tmLanguage"
+            }
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "GTIRB Server Configuration",
+            "properties": {
+                "gtirb.server.host": {
+                    "type": "string",
+                    "description": "IP address of server.",
+                    "default": "127.0.0.1"
+                },
+                "gtirb.server.port": {
+                    "type": "number",
+                    "description": "Port to connect to.",
+                    "default": 3036
+                },
+                "gtirb.exampleConfiguration": {
+                    "scope": "resource",
+                    "type": "string",
+                    "default": "Example message."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "lint": "eslint . --ext .ts,.tsx",
+        "watch": "tsc -w -p ./"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^7.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^12.12.0",
+        "@types/vscode": "^1.52.0",
+        "@typescript-eslint/eslint-plugin": "^4.16.0",
+        "@typescript-eslint/parser": "^4.16.0",
+        "eslint": "^7.21.0",
+        "typescript": "^4.3.5"
+    }
+}
