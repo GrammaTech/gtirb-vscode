@@ -14,4 +14,4 @@ This extension will load a GTIRB file and display an assembly file listing of th
 - Switch to the Debug viewlet.
 - Select `Launch Client+Server` from the drop down.
 - Run the launch config.
-- In the [Extension Development Host] instance of VSCode, open a folder with a ".gtirb" file in it and lick the file in file explorer.
+- In the [Extension Development Host] instance of VSCode, open a folder with a ".gtirb" file in it and click the file to open it.
