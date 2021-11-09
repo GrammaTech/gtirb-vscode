@@ -23,10 +23,6 @@ const execShell = (cmd: string) =>
  class GtirbDocument extends Disposable implements vscode.CustomDocument {
 	static create(
         uri: vscode.Uri
-// Supposed to return a promise for a document, I experimented with 
-// just returning a document directly, doesn't seem to matter
-// Update: No. See ~/extension/promise-problem.txt
-//	): Promise<GtirbDocument | PromiseLike<GtirbDocument>> {
 	): GtirbDocument {
 	return new GtirbDocument(uri);
 	}
@@ -61,26 +57,9 @@ const execShell = (cmd: string) =>
 		const armCachePath = path.join(cachePath, 'arm');
 		const armAsmPath = path.join(armCachePath, parsedPath.name.concat('.gtasm'));
 
-		//const x64File = path.join(x64Cache, gtirbFile);
-		//const x64AssemblyFile: vscode.Uri = vscode.Uri.file(x64File.concat('.gtasm'));
-
-		//const mipsCache: string = path.join(cachePath, 'mips');
-		//const mipsFile = path.join(mipsCache, gtirbFile);
-		//const mipsAssemblyFile: vscode.Uri = vscode.Uri.file(mipsFile.concat('.gtasm'));
-
-		//const armCache: string = path.join(cachePath, 'mips');
-		//const armFile = path.join(armCache, gtirbFile);
-		//const armAssemblyFile: vscode.Uri = vscode.Uri.file(armFile.concat('.gtasm'));
-
-		//const tryPath = path.join(x64Cache, parsedPath.name.concat('.gtasm'));
 		// Wait for text document
-		console.log(`looking for ${x64AsmPath}`);
-		console.log(`or ${mipsAsmPath}`);
-		console.log(`or ${armAsmPath}`);
-		//if (fs.existsSync(x64AssemblyFile.fsPath)) {
 		if (fs.existsSync(x64AsmPath)) {
 			try {
-				//vscode.workspace.fs.stat(x64AssemblyFile);
 				vscode.window.showTextDocument(vscode.Uri.file(x64AsmPath));
 			} catch {
 				vscode.window.showInformationMessage(`${x64AsmPath} does not exist`);
@@ -102,9 +81,6 @@ const execShell = (cmd: string) =>
 export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<GtirbDocument> {
 
 	public static register(context: vscode.ExtensionContext): vscode.Disposable {
-		//const provider = new GtirbEditorProvider(context);
-		//const providerRegistration = vscode.window.registerCustomEditorProvider(GtirbEditorProvider.viewType, provider);
-		//return providerRegistration;
 		return vscode.window.registerCustomEditorProvider(
 				GtirbEditorProvider.viewType,
 				new GtirbEditorProvider(context),
@@ -133,8 +109,6 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 		const document: GtirbDocument = GtirbDocument.create(uri);
 		console.log("gtirb resolve custom editor called.");
 
-		//execShell(`echo path = $PWD`).then(result => console.log(result));
-		//execShell(`echo file = ${document.uri.fsPath}`).then(result => console.log(result));
 		console.log (`extension path: ${this.myPath}`);
 		const path: string = uri.fsPath;
 		const x64AssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtx64'));
@@ -147,7 +121,6 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 		const mipsJsonFile: vscode.Uri = vscode.Uri.file(mipsAssemblyFile.fsPath.concat('.json'));
 
 		// This is where I have been calling indexer, maybe with wait, maybe not
-//		execShell(`${this.myPath}/indexer.sh ${path}`).then(result => console.log(result));
 		if ((fs.existsSync(x64JsonFile.fsPath) && fs.existsSync(x64JsonFile.fsPath))
 			|| (fs.existsSync(mipsJsonFile.fsPath) && fs.existsSync(mipsJsonFile.fsPath))
 			|| (fs.existsSync(armJsonFile.fsPath) && fs.existsSync(armJsonFile.fsPath))) {

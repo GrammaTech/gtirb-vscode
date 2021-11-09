@@ -84,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
             throw new Error("`python.pythonPath` is not set");
         }
 
-        client = startLangServer(pythonPath, ["-m", "server"], cwd);
+        client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], cwd);
     } else {
         client = startLangServerTCP(port!, hostAddr!);
     }

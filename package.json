@@ -85,7 +85,7 @@
                 "gtirb.server.host": {
                     "type": "string",
                     "description": "IP address of server.",
-                    "default": "127.0.0.1"
+                    "default": "stdio"
                 },
                 "gtirb.server.port": {
                     "type": "number",
