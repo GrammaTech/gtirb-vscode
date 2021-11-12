@@ -137,8 +137,6 @@ def isolate_token(line: str, pos: int) -> str:
 def do_indexing(text_document):
     path_list = text_document.uri.split('//')
 
-    lines = text_document.text.splitlines()
-
     if len(path_list) > 1 and path_list[0] == 'file:':
         asmfile = path_list[1]
         cachedir = os.path.dirname(os.path.dirname(asmfile))
@@ -192,7 +190,7 @@ def do_indexing(text_document):
         defs = {}
         xref = defaultdict(list)
         def_search = re.compile('^.*:$')
-        for i, line in enumerate(lines):
+        for i, line in enumerate(text_document.text.splitlines()):
             if def_search.match(line) != None:
                 defined_symbol = line[:-1]
                 if defined_symbol in symlist:
