@@ -3,6 +3,7 @@
 DEBUG=false
 CONTINUE=true
 
+PWD=$(dirname $(realpath $0))
 if [[ $# -lt 1 ]]; then
 	MESSAGE="No file. Usage: $0 <gtirb-file-name>"
 	CONTINUE=false
@@ -12,9 +13,9 @@ if ${CONTINUE}
 then
 	FS_PATH=$1
 	if [[ -f ${PWD}/get-isa.py ]]; then
-		ISA=`./get-isa.py ${FS_PATH}`
+		ISA=$(${PWD}/get-isa.py ${FS_PATH})
 	else
-		MESSAGE="get-isa.py script not found."
+		MESSAGE="${PWD}/get-isa.py script not found."
 		CONTINUE=false
 	fi
 fi
