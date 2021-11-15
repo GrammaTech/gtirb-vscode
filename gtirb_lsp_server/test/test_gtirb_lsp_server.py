@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Text
 from uuid import UUID
 
-from gtirb_lsp_server.server import get_line_offset, UUIDEncoder
+from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_comment
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -17,9 +17,9 @@ def slurp(path: Path) -> Text:
 
 class InitialIndexTestDriver(unittest.TestCase):
     def setUp(self):
-        self.gtirb_path = (DATA_DIR / "hello.gtirb")
+        self.gtirb_path = (DATA_DIR / "leafnode.gtirb")
         self.gtirb = gtirb.IR.load_protobuf(self.gtirb_path)
-        self.asm_path = (DATA_DIR / "hello.gtasm")
+        self.asm_path = (DATA_DIR / "leafnode.gtasm")
         self.asm = slurp(self.asm_path)
 
     def test_get_line_offsets(self):
@@ -31,7 +31,29 @@ class InitialIndexTestDriver(unittest.TestCase):
         # Is not empty.
         self.assertTrue(len(line_offsets) > 0)
         # Is able to dump
-        json.dump(line_offsets, open(DATA_DIR / "hello.json", "w"), cls=UUIDEncoder)
+        json.dump(line_offsets, open(DATA_DIR / "temp.json", "w"), cls=UUIDEncoder)
         self.assertEqual(line_offsets,
                          list(map(lambda el: (el[0],(UUID(hex=el[1][0]),el[1][1])),
-                                json.load(open(DATA_DIR / "hello.json", "r")))))
+                                json.load(open(DATA_DIR / "temp.json", "r")))))
+
+    def test_line_offsets_to_maps(self):
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
+            self.gtirb,
+            get_line_offset(self.gtirb, self.asm)
+        )
+        counter = 0
+        found = False
+        for i in range(len(self.asm.splitlines())):
+            try:
+                off = offset_by_line[i]
+            except:
+                continue
+            counter += 1
+            comment = offset_to_comment(self.gtirb, off)
+            if comment:
+                found = True
+                print(f"{i} {off.element_id.uuid.hex} {off.displacement} {offset_to_comment(self.gtirb, off)}")
+                break
+        print(f"{counter} line to UUID maps processed")
+        self.assertTrue(counter > 0)
+        self.assertTrue(found)

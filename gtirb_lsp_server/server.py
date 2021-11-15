@@ -42,7 +42,7 @@ from pygls.lsp.types import (
 )
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 DEFAULT_PORT = 3036
 DEFAULT_TCP_FLAG = False
@@ -64,22 +64,34 @@ class UUIDEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
+    logger.debug(f"line_to_offset({document_uri}, {line})")
     try:
         return current_indexes[document_uri][0][line]
     except:
         return None
 
-def offset_to_line(document_uri: str, offset: gtirb.Offset) -> Optional[int]:
+def offset_to_line(document_uri: str, offset: Union[gtirb.Offset,str,int]) -> Optional[int]:
+    if isinstance(offset, str):
+        uuid.UUID(hex=offset)
+    elif isinstance(offset, int):
+        uuid.UUID(int=offset)
     try:
         return current_indexes[document_uri][1][offset]
     except:
         return None
 
-def offset_to_comment(document_uri: str, offset: gtirb.Offset) -> Optional[str]:
+def offset_to_comment(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
+    logger.debug(f"offset_to_comment(IR, {offset})")
     try:
-        return current_gtirbs[document_uri].modules[0].aux_data['comments'][offset]
+        comments = ir.modules[0].aux_data['comments'].data
+        try:
+            return comments[offset]
+        except:
+            logger.debug(f"Can't find {offset} in {comments.keys()}")
     except:
-        return None
+        logger.debug(f"No comments found for {ir.modules[0].aux_data}")
+
+    return None
 
 # Local class allows addition  of a configuration section
 # See pygls example: json language server
@@ -138,23 +150,33 @@ def get_line_offset(ir: gtirb, text: str) -> List[Tuple[int, Tuple[int, int]]]:
     address_lines.sort(key=lambda x: x[0])
 
     # Process the gtirb file to create a list of (address, UUID).
-    address_uuids = list(map(lambda b: (b.address, b.uuid), ir.byte_blocks))
-    address_uuids.sort(key=lambda x: x[0])
+    address_to_uuid_displacement = {}
+    for block in ir.byte_blocks:
+        for i in range(block.size):
+            address_to_uuid_displacement[block.address + i] = (block.uuid, i)
 
     # Walk the lists building up a map of line_number <-> (uuid, offset).
-    line_offsets = []
-    last = None
     # Lowest address in file should be in a block.
-    assert(address_lines[0][0] >= address_uuids[0][0])
+    line_offsets = []
     for (address, line_number) in address_lines:
-        # Check if we're into the next block.
-        if(address >= address_uuids[0][0]):
-            last = address_uuids.pop(0)
-        line_offsets += [(line_number, (last[1], address - last[0]))]
+        line_offsets += [(line_number, address_to_uuid_displacement[address])]
 
     return line_offsets
 
+def line_offsets_to_maps(ir: gtirb, line_offsets):
+    """Create maps from line_uuids going both ways."""
+    logger.debug("Create maps from line_uuids going both ways.")
+    offset_by_line = {}
+    line_by_offset = {}
+    for (line, offset) in line_offsets:
+        # Convert (uuid,displacement) tuples to actual GTIRB offsets.
+        offset = gtirb.Offset(ir.get_by_uuid(offset[0]), offset[1])
+        offset_by_line[line] = offset
+        line_by_offset[offset] = line
+    return (offset_by_line, line_by_offset)
+
 def ensure_index(text_document):
+    logger.debug(f"ensure_index({text_document.uri})")
     path_list = text_document.uri.split('//')
 
     if len(path_list) > 1 and path_list[0] == 'file:':
@@ -172,6 +194,7 @@ def ensure_index(text_document):
 
     try:
         ir = gtirb.IR.load_protobuf(gtirbfile)
+        current_gtirbs[text_document.uri] = ir
     except Exception as inst:
         logger.error(inst)
         logger.error("Unable to load gtirb file %s." % gtirbfile)
@@ -179,29 +202,26 @@ def ensure_index(text_document):
 
     line_offsets = None
     if os.path.exists(jsonfile):
-        logger.info(f"Loading (line-number,offset(UUID,int)) map from JSON file: {jsonfile}")
-        # Convert UUIDs back from hex to UUIDs.
-        line_offsets = list(map(lambda el: (el[0],(uuid.UUID(hex=el[1][0]),el[1][1])),
-                                json.load(open(jsonfile,'r'))))
+        try:
+            logger.info(f"Loading (line-number,offset(UUID,int)) map from JSON file: {jsonfile}")
+            # Convert UUIDs back from hex to UUIDs.
+            line_offsets = list(map(lambda el: (el[0],(uuid.UUID(hex=el[1][0]),el[1][1])),
+                                    json.load(open(jsonfile,'r'))))
+        except:
+            logger.info(f"Failed to load JSON file: {jsonfile}")
+            line_offsets = None
 
-    else:
+    if(line_offsets == None):
         logger.info(f"Populating (line-number,offset(UUID,int)) map to JSON file: {jsonfile}")
         line_offsets = get_line_offset(ir, text_document.text)
 
         # Store the resulting map into a JSON file.
+        logger.debug(f"line_offsets => {line_offsets}")
         json.dump(line_offsets, open(jsonfile,'w'), cls=UUIDEncoder)
 
     # Create maps from line_uuids going both ways.
-    line_to_offset = {}
-    offset_to_line = {}
-    for (line, offset) in line_offsets:
-        # Convert (uuid,displacement) tuples to actual GTIRB offsets.
-        offset = gtirb.Offset(ir.get_by_uuid(offset[0]), offset[1])
-        line_to_offset[line] = offset
-        offset_to_line[offset] = line
+    current_indexes[text_document.uri] = line_offsets_to_maps(ir, line_offsets)
 
-    # Add to current indexes
-    current_indexes[text_document.uri] = (line_to_offset, offset_to_line)
 
 server = GtirbLanguageServer()
 
@@ -331,16 +351,27 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
 def get_hover(ls, params: HoverParams) -> Optional[Hover]:
     logger.info(f"Hover request received uri: {params.text_document.uri}")
     offset = line_to_offset(params.text_document.uri, params.position.line)
-
     if offset:
+        comment = offset_to_comment(current_gtirbs[params.text_document.uri], offset)
+    else:
+        comment = None
+
+    if (comment == None):
+        logger.debug("No comment found")
         return Hover(
             contents=MarkupContent(
                 kind=MarkupKind.PlainText,
-                value=offset_to_comment(offset)
+                value="No comment found"
             )
         )
     else:
-        return None
+        logger.debug(f"Returning comment: {comment}")
+        return Hover(
+            contents=MarkupContent(
+                kind=MarkupKind.PlainText,
+                value=comment
+            )
+        )
 
 def gtirb_tcp_server(host: str, port: int) -> None:
     server.start_tcp(host, port)
