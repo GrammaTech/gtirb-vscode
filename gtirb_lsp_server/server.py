@@ -5,6 +5,7 @@ import json
 import logging
 import argparse
 import gtirb
+import uuid
 import re
 from collections import defaultdict
 from typing import List, Optional, Union, Tuple
@@ -41,6 +42,7 @@ from pygls.lsp.types import (
 )
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 DEFAULT_PORT = 3036
 DEFAULT_TCP_FLAG = False
@@ -52,6 +54,14 @@ LocationList = List[Location]
 current_gtirbs = {}
 current_indexes = {}
 current_documents = {}
+
+# https://stackoverflow.com/questions/36588126/uuid-is-not-json-serializable
+class UUIDEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, uuid.UUID):
+            # if the obj is uuid, we simply return the value of uuid
+            return obj.hex
+        return json.JSONEncoder.default(self, obj)
 
 def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
     try:
@@ -107,7 +117,7 @@ def replace_delims(line):
 def isolate_token(line: str, pos: int) -> str:
     if pos < 0 or pos >= len(line):
         return ""
-    p = re.compile('\S+')
+    p = re.compile('[^ \t\n\r\f\v]+')
     for m in p.finditer(replace_delims(line)):
         if pos >= m.start() and pos < m.start()+len(m.group()):
             return m.group()
@@ -170,14 +180,16 @@ def ensure_index(text_document):
     line_offsets = None
     if os.path.exists(jsonfile):
         logger.info(f"Loading (line-number,offset(UUID,int)) map from JSON file: {jsonfile}")
-        line_offsets = json.load(open(jsonfile,'r'))
+        # Convert UUIDs back from hex to UUIDs.
+        line_offsets = list(map(lambda el: (el[0],(uuid.UUID(hex=el[1][0]),el[1][1])),
+                                json.load(open(jsonfile,'r'))))
 
     else:
         logger.info(f"Populating (line-number,offset(UUID,int)) map to JSON file: {jsonfile}")
         line_offsets = get_line_offset(ir, text_document.text)
 
         # Store the resulting map into a JSON file.
-        json.dump(line_offsets, open(jsonfile,'w'))
+        json.dump(line_offsets, open(jsonfile,'w'), cls=UUIDEncoder)
 
     # Create maps from line_uuids going both ways.
     line_to_offset = {}

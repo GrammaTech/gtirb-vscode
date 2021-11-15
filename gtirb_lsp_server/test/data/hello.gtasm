@@ -1,0 +1,212 @@
+#===================================
+.intel_syntax noprefix
+#===================================
+
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+
+#===================================
+.section .interp ,"a",@progbits
+#===================================
+
+.align 1
+          .byte 0x2f                                           # EA: 0x400318
+          .byte 0x6c                                           # EA: 0x400319
+          .byte 0x69                                           # EA: 0x40031a
+          .byte 0x62                                           # EA: 0x40031b
+          .byte 0x36                                           # EA: 0x40031c
+          .byte 0x34                                           # EA: 0x40031d
+          .byte 0x2f                                           # EA: 0x40031e
+          .byte 0x6c                                           # EA: 0x40031f
+          .byte 0x64                                           # EA: 0x400320
+          .byte 0x2d                                           # EA: 0x400321
+          .byte 0x6c                                           # EA: 0x400322
+          .byte 0x69                                           # EA: 0x400323
+          .byte 0x6e                                           # EA: 0x400324
+          .byte 0x75                                           # EA: 0x400325
+          .byte 0x78                                           # EA: 0x400326
+          .byte 0x2d                                           # EA: 0x400327
+          .byte 0x78                                           # EA: 0x400328
+          .byte 0x38                                           # EA: 0x400329
+          .byte 0x36                                           # EA: 0x40032a
+          .byte 0x2d                                           # EA: 0x40032b
+          .byte 0x36                                           # EA: 0x40032c
+          .byte 0x34                                           # EA: 0x40032d
+          .byte 0x2e                                           # EA: 0x40032e
+          .byte 0x73                                           # EA: 0x40032f
+          .byte 0x6f                                           # EA: 0x400330
+          .byte 0x2e                                           # EA: 0x400331
+          .byte 0x32                                           # EA: 0x400332
+          .byte 0x0                                            # EA: 0x400333
+#===================================
+# end section .interp
+#===================================
+
+#===================================
+.text
+#===================================
+
+          .byte 0x66                                           # EA: 0x4010ae
+          .byte 0x90                                           # EA: 0x4010af
+          .byte 0x66                                           # EA: 0x4010b1
+          .byte 0x66                                           # EA: 0x4010b2
+          .byte 0x2e                                           # EA: 0x4010b3
+          .byte 0xf                                            # EA: 0x4010b4
+          .byte 0x1f                                           # EA: 0x4010b5
+          .byte 0x84                                           # EA: 0x4010b6
+          .byte 0x0                                            # EA: 0x4010b7
+          .byte 0x0                                            # EA: 0x4010b8
+          .byte 0x0                                            # EA: 0x4010b9
+          .byte 0x0                                            # EA: 0x4010ba
+          .byte 0x0                                            # EA: 0x4010bb
+          .byte 0xf                                            # EA: 0x4010bc
+          .byte 0x1f                                           # EA: 0x4010bd
+          .byte 0x40                                           # EA: 0x4010be
+          .byte 0x0                                            # EA: 0x4010bf
+          .byte 0x66                                           # EA: 0x4010f1
+          .byte 0x66                                           # EA: 0x4010f2
+          .byte 0x2e                                           # EA: 0x4010f3
+          .byte 0xf                                            # EA: 0x4010f4
+          .byte 0x1f                                           # EA: 0x4010f5
+          .byte 0x84                                           # EA: 0x4010f6
+          .byte 0x0                                            # EA: 0x4010f7
+          .byte 0x0                                            # EA: 0x4010f8
+          .byte 0x0                                            # EA: 0x4010f9
+          .byte 0x0                                            # EA: 0x4010fa
+          .byte 0x0                                            # EA: 0x4010fb
+          .byte 0xf                                            # EA: 0x4010fc
+          .byte 0x1f                                           # EA: 0x4010fd
+          .byte 0x40                                           # EA: 0x4010fe
+          .byte 0x0                                            # EA: 0x4010ff
+          .byte 0x90                                           # EA: 0x40111f
+          .byte 0x66                                           # EA: 0x401121
+          .byte 0x66                                           # EA: 0x401122
+          .byte 0x2e                                           # EA: 0x401123
+          .byte 0xf                                            # EA: 0x401124
+          .byte 0x1f                                           # EA: 0x401125
+          .byte 0x84                                           # EA: 0x401126
+          .byte 0x0                                            # EA: 0x401127
+          .byte 0x0                                            # EA: 0x401128
+          .byte 0x0                                            # EA: 0x401129
+          .byte 0x0                                            # EA: 0x40112a
+          .byte 0x0                                            # EA: 0x40112b
+          .byte 0xf                                            # EA: 0x40112c
+          .byte 0x1f                                           # EA: 0x40112d
+          .byte 0x40                                           # EA: 0x40112e
+          .byte 0x0                                            # EA: 0x40112f
+.align 2
+#-----------------------------------
+.globl main
+.type main, @function
+#-----------------------------------
+main:
+
+            nop                                                # EA: 0x401136
+            nop                                                # EA: 0x401137
+            nop                                                # EA: 0x401138
+            nop                                                # EA: 0x401139
+            push RBP                                           # EA: 0x40113a
+            mov RBP,RSP                                        # EA: 0x40113b
+            mov EDI,OFFSET .L_402004                           # EA: 0x40113e
+            call puts@PLT                                      # EA: 0x401143
+
+            mov EAX,0                                          # EA: 0x401148
+            pop RBP                                            # EA: 0x40114d
+            ret                                                # EA: 0x40114e
+
+            nop                                                # EA: 0x40114f
+#===================================
+# end section .text
+#===================================
+
+#===================================
+.section .rodata ,"a",@progbits
+#===================================
+
+.align 4
+          .byte 0x1                                            # EA: 0x402000
+          .byte 0x0                                            # EA: 0x402001
+          .byte 0x2                                            # EA: 0x402002
+          .byte 0x0                                            # EA: 0x402003
+.L_402004:
+          .string "Hello World!\n"                             # EA: 0x402004
+#===================================
+# end section .rodata
+#===================================
+
+#===================================
+.section .init_array ,"wa"
+#===================================
+
+.align 8
+__frame_dummy_init_array_entry:
+__init_array_start:
+#===================================
+# end section .init_array
+#===================================
+
+#===================================
+.section .fini_array ,"wa"
+#===================================
+
+.align 8
+__do_global_dtors_aux_fini_array_entry:
+__init_array_end:
+#===================================
+# end section .fini_array
+#===================================
+
+#===================================
+.data
+#===================================
+
+.align 8
+#-----------------------------------
+.weak data_start
+.type data_start, @notype
+#-----------------------------------
+data_start:
+          .zero 8                                              # EA: 0x404020
+          .zero 8                                              # EA: 0x404028
+#===================================
+# end section .data
+#===================================
+
+#===================================
+.bss
+#===================================
+
+.align 1
+completed.8060:
+#-----------------------------------
+.globl _edata
+.type _edata, @notype
+#-----------------------------------
+_edata:
+          .zero 8                                              # EA: 0x404030
+#-----------------------------------
+.globl _end
+.type _end, @notype
+#-----------------------------------
+_end:
+#===================================
+# end section .bss
+#===================================
+#-----------------------------------
+.weak __gmon_start__
+.type __gmon_start__, @notype
+#-----------------------------------
+#-----------------------------------
+.globl puts
+.type puts, @function
+#-----------------------------------
+#-----------------------------------
+.globl __libc_start_main
+.type __libc_start_main, @function
+#-----------------------------------
