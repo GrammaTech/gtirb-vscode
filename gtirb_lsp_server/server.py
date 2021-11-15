@@ -170,14 +170,14 @@ def ensure_index(text_document):
     line_offsets = None
     if os.path.exists(jsonfile):
         logger.info(f"Loading (line-number,offset(UUID,int)) map from JSON file: {jsonfile}")
-        line_offsets = json.load(file.open(jsonfile,'r'))
+        line_offsets = json.load(open(jsonfile,'r'))
 
     else:
         logger.info(f"Populating (line-number,offset(UUID,int)) map to JSON file: {jsonfile}")
         line_offsets = get_line_offset(ir, text_document.text)
 
         # Store the resulting map into a JSON file.
-        json.dump(line_offsets, file.open(jsonfile,'w'))
+        json.dump(line_offsets, open(jsonfile,'w'))
 
     # Create maps from line_uuids going both ways.
     line_to_offset = {}
