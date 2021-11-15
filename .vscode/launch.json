@@ -34,7 +34,7 @@
             "name": "Launch Server (TCP)",
             "type": "python",
             "request": "launch",
-            "module": "server",
+            "module": "gtirb_lsp_server",
             "args": ["--tcp"],
             "justMyCode": false,
             "python": "${command:python.interpreterPath}",
