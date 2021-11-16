@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Text
 from uuid import UUID
 
-from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_auxdata, offset_indexed_aux_data, blocks_for_function_name, first_line_for_blocks, first_line_for_uuid, preceding_function_line
+from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_auxdata, offset_indexed_aux_data, blocks_for_function_name, first_line_for_blocks, first_line_for_uuid, preceding_function_line, offset_to_predecessors, offset_to_successors
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -91,3 +91,15 @@ class InitialIndexTestDriver(unittest.TestCase):
         func_line = 9878
         preceding_line = preceding_function_line(self.asm, func_name, func_line)
         self.assertEqual(preceding_line, 9876)
+
+    def test_offset_to_predecessors(self):
+        it = self.gtirb.get_by_uuid(UUID('7a888589-9c8e-4952-95c9-a096e5d9b479'))
+        predecessors = list(offset_to_predecessors(self.gtirb,
+                                                   gtirb.Offset(element_id=it, displacement=0)))
+        self.assertTrue(len(predecessors) > 0)
+
+    def test_offset_to_successors(self):
+        it = self.gtirb.get_by_uuid(UUID('7a888589-9c8e-4952-95c9-a096e5d9b479'))
+        successors = list(offset_to_successors(self.gtirb,
+                                               gtirb.Offset(element_id=it, displacement=0)))
+        self.assertTrue(len(successors) > 0)

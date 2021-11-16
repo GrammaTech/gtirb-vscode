@@ -89,6 +89,12 @@ def offset_to_auxdata(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
     else:
         return result
 
+def offset_to_predecessors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gtirb.Offset]]:
+    return map(lambda edge: gtirb.Offset(edge.source, 0), ir.cfg.in_edges[offset.element_id])
+
+def offset_to_successors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gtirb.Offset]]:
+    return map(lambda edge: gtirb.Offset(edge.target, 0), ir.cfg.out_edges[offset.element_id])
+
 # Local class allows addition  of a configuration section
 # See pygls example: json language server
 class GtirbLanguageServer(LanguageServer):
@@ -374,26 +380,26 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
             return None
     else:
         # Check if cache exists ono file system?
-        ls.show_message(f" document {params.text_document.uri} is not in the current document store.")
+        ls.show_message(f" document {params.text_document.uri} is not in the current store.")
         return None
 
-    if params.text_document.uri in current_indexes:
-        index = current_indexes[params.text_document.uri]
-        refs = index.xref[current_token]
-        if refs == None or len(refs) == 0:
-            return None
-        for ref in refs:
-            reference_line: str = current_lines[ref]
+    ir = current_gtirbs[params.text_document.uri]
+    offset = line_to_offset(params.text_document.uri, current_line)
+    if offset:
+        for line in map(lambda off: offset_to_line(params.text_document.uri, off),
+                        (list(offset_to_predecessors(ir, offset)) +
+                         list(offset_to_successors(ir, offset)))):
+            reference_line: str = current_lines[line]
             locations.append(Location(
                 uri = params.text_document.uri,
                 range = Range(
-                    start = Position(line = ref,
-                        character = reference_line.find(current_token)),
-                    end = Position(line = ref,
-                        character = reference_line.find(current_token) + len(current_token)))))
+                    start = Position(line = line,
+                                     character = reference_line.find(current_token)),
+                    end = Position(line = line,
+                                   character = (reference_line.find(current_token) +
+                                                len(current_token))))))
     else:
-        ls.show_message(f" document {params.text_document.uri} is not in the current index store.")
-        return None
+        ls.show_message(f" no offset associated with {params.text_document.uri}:{line}")
 
     return locations
 
