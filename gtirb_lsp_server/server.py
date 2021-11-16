@@ -55,15 +55,8 @@ current_gtirbs = {}
 current_indexes = {}
 current_documents = {}
 
-# https://stackoverflow.com/questions/36588126/uuid-is-not-json-serializable
-class UUIDEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, uuid.UUID):
-            # if the obj is uuid, we simply return the value of uuid
-            return obj.hex
-        return json.JSONEncoder.default(self, obj)
-
 def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
+    """Lookup LINE in the current indexes to return the associated OFFSET"""
     logger.debug(f"line_to_offset({document_uri}, {line})")
     try:
         return current_indexes[document_uri][0][line]
@@ -71,6 +64,7 @@ def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
         return None
 
 def offset_to_line(document_uri: str, offset: Union[gtirb.Offset,str,int]) -> Optional[int]:
+    """Lookup OFFSET in the current indexes to return the associated LINE"""
     if isinstance(offset, str):
         uuid.UUID(hex=offset)
     elif isinstance(offset, int):
@@ -174,6 +168,15 @@ def line_offsets_to_maps(ir: gtirb, line_offsets):
         offset_by_line[line] = offset
         line_by_offset[offset] = line
     return (offset_by_line, line_by_offset)
+
+# Used to serialize UUIDs to JSON.
+# https://stackoverflow.com/questions/36588126/uuid-is-not-json-serializable
+class UUIDEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, uuid.UUID):
+            # if the obj is uuid, we simply return the value of uuid
+            return obj.hex
+        return json.JSONEncoder.default(self, obj)
 
 def ensure_index(text_document):
     logger.debug(f"ensure_index({text_document.uri})")
