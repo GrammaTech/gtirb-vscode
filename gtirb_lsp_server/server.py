@@ -74,18 +74,20 @@ def offset_to_line(document_uri: str, offset: Union[gtirb.Offset,str,int]) -> Op
     except:
         return None
 
-def offset_to_comment(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
-    logger.debug(f"offset_to_comment(IR, {offset})")
-    try:
-        comments = ir.modules[0].aux_data['comments'].data
-        try:
-            return comments[offset]
-        except:
-            logger.debug(f"Can't find {offset} in {comments.keys()}")
-    except:
-        logger.debug(f"No comments found for {ir.modules[0].aux_data}")
+def offset_to_auxdata(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
+    logger.debug(f"offset_to_auxdata(IR, {offset})")
+    result = ""
+    for name in offset_indexed_aux_data(ir):
+        data = ir.modules[0].aux_data[name].data.get(offset)
+        if data:
+            result += f"{name}: {data}\n"
+        else:
+            logger.debug(f"Can't find {offset} in {name}")
 
-    return None
+    if result == "":
+        return None
+    else:
+        return result
 
 # Local class allows addition  of a configuration section
 # See pygls example: json language server
@@ -355,24 +357,24 @@ def get_hover(ls, params: HoverParams) -> Optional[Hover]:
     logger.info(f"Hover request received uri: {params.text_document.uri}")
     offset = line_to_offset(params.text_document.uri, params.position.line)
     if offset:
-        comment = offset_to_comment(current_gtirbs[params.text_document.uri], offset)
+        auxdata = offset_to_auxdata(current_gtirbs[params.text_document.uri], offset)
     else:
-        comment = None
+        auxdata = None
 
-    if (comment == None):
-        logger.debug("No comment found")
+    if (auxdata == None):
+        logger.debug("No auxdata found")
         return Hover(
             contents=MarkupContent(
                 kind=MarkupKind.PlainText,
-                value="No comment found"
+                value="No auxdata found"
             )
         )
     else:
-        logger.debug(f"Returning comment: {comment}")
+        logger.debug(f"Returning auxdata: {auxdata}")
         return Hover(
             contents=MarkupContent(
                 kind=MarkupKind.PlainText,
-                value=comment
+                value=auxdata
             )
         )
 
