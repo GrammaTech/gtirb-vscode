@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Text
 from uuid import UUID
 
-from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_comment
+from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_comment, offset_indexed_aux_data
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -57,3 +57,8 @@ class InitialIndexTestDriver(unittest.TestCase):
         print(f"{counter} line to UUID maps processed")
         self.assertTrue(counter > 0)
         self.assertTrue(found)
+
+    def test_offset_indexed_aux_data(self):
+        offset_indexed_names = offset_indexed_aux_data(self.gtirb)
+        self.assertTrue(len(offset_indexed_names) > 0)
+        self.assertTrue(all(map(lambda it: isinstance(it, str), offset_indexed_names)))

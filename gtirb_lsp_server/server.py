@@ -376,6 +376,17 @@ def get_hover(ls, params: HoverParams) -> Optional[Hover]:
             )
         )
 
+
+def offset_indexed_aux_data(ir: gtirb) -> List[str]:
+    results = []
+    for (name, value) in ir.modules[0].aux_data.items():
+        if not isinstance(value.data, dict):
+            continue
+        if not isinstance(list(value.data.keys())[0], gtirb.Offset):
+            continue
+        results += [name]
+    return results
+
 def gtirb_tcp_server(host: str, port: int) -> None:
     server.start_tcp(host, port)
 
