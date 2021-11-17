@@ -284,26 +284,26 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
         ls.show_message(f" document {params.text_document.uri} is not in the current document store.")
         return None
 
-    if params.text_document.uri in current_indexes:
-        index = current_indexes[params.text_document.uri]
-        if current_token in index.defs:
-            adef = index.defs[current_token]
-        else:
-            return None
-        # Expecting only one def
-        definition_line: str = current_lines[adef]
-        location = Location(
-            uri = params.text_document.uri,
-            range = Range(
-                start = Position(line = adef,
-                    character = definition_line.find(current_token)),
-                end = Position(line = adef,
-                    character = definition_line.find(current_token) + len(current_token))))
-    else:
-        ls.show_message(f" document {params.text_document.uri} is not in the current index store.")
-        return None
+    ir = current_gtirbs[params.text_document.uri]
+    key = None
+    for uuid, symbol in ir.modules[0].aux_data['functionNames'].data.items():
+        if symbol.name == current_token:
+            # Find the first line inside of the function blocks
+            blocks = ir.modules[0].aux_data['functionBlocks'].data.get(uuid)
+            for line in range(len(current_lines)):
+                if line_to_offset(params.text_document.uri, line) in blocks:
+                    definition_line: str = current_lines[line]
+                    return Location(
+                        uri = params.text_document.uri,
+                        range = Range(
+                            start = Position(line = adef,
+                                character = definition_line.find(current_token)),
+                            end = Position(line = adef,
+                                character = (definition_line.find(current_token) +
+                                             len(current_token)))))
+            break
 
-    return location
+    return None
 
 # remove async ? test code does not have.
 #    async def get_references(ls, params: ReferenceParams):
