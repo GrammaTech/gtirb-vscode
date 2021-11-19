@@ -1,0 +1,71 @@
+variables:
+  COVERAGE_FAIL_BELOW: 20
+
+stages:
+    - check-format
+    - test
+
+default:
+  image: python:3.7-slim
+  tags: ["kubernetes"]
+
+check-format:
+  stage: check-format
+  script:
+    - apt update -y && apt install -y git
+    - pip3 install pre-commit
+    - pre-commit run --all-files --show-diff-on-failure
+
+test-stable-18:
+  stage: test
+  image: $CI_REGISTRY/rewriting/ddisasm/ubuntu18
+  script:
+    - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
+    - echo "deb https://download.grammatech.com/gtirb/files/apt-repo bionic stable" >> /etc/apt/sources.list
+    - apt-get update -y
+    - apt-get install -y gtirb-pprinter ddisasm
+    - pip3 install --upgrade pip
+    - pip3 install -r requirements-dev.txt
+    - pip3 install -e .
+    - cd gtirb_lsp_server
+    - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW
+
+test-unstable-18:
+  stage: test
+  image: $CI_REGISTRY/rewriting/ddisasm/ubuntu18
+  script:
+    - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
+    - echo "deb $INTERNAL_APT_REPO bionic unstable" >> /etc/apt/sources.list
+    - apt-get update -y
+    - apt-get install -y gtirb-pprinter ddisasm
+    - pip3 install --upgrade pip
+    - pip3 install -r requirements-dev.txt
+    - pip3 install -e . --pre --extra-index-url "$EXTRA_INDEX_URL"
+    - cd gtirb_lsp_server
+    - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW
+
+test-stable-20:
+  stage: test
+  image: $CI_REGISTRY/rewriting/ddisasm/ubuntu20
+  script:
+    - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
+    - echo "deb https://download.grammatech.com/gtirb/files/apt-repo focal stable" >> /etc/apt/sources.list
+    - apt-get update -y
+    - apt-get install -y gtirb-pprinter ddisasm
+    - pip3 install -r requirements-dev.txt
+    - pip3 install -e .
+    - cd gtirb_lsp_server
+    - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW
+
+test-unstable-20:
+  stage: test
+  image: $CI_REGISTRY/rewriting/ddisasm/ubuntu20
+  script:
+    - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
+    - echo "deb $INTERNAL_APT_REPO focal unstable" >> /etc/apt/sources.list
+    - apt-get update -y
+    - apt-get install -y gtirb-pprinter ddisasm
+    - pip3 install -r requirements-dev.txt
+    - pip3 install -e . --pre --extra-index-url "$EXTRA_INDEX_URL"
+    - cd gtirb_lsp_server
+    - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW
