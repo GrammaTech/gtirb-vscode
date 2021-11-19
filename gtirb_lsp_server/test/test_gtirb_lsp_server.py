@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Text
 from uuid import UUID
 
-from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_auxdata, offset_indexed_aux_data
+from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_auxdata, offset_indexed_aux_data, blocks_for_function_name, first_line_for_blocks, first_line_for_uuid
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -62,3 +62,26 @@ class InitialIndexTestDriver(unittest.TestCase):
         offset_indexed_names = offset_indexed_aux_data(self.gtirb)
         self.assertTrue(len(offset_indexed_names) > 0)
         self.assertTrue(all(map(lambda it: isinstance(it, str), offset_indexed_names)))
+
+    def test_blocks_for_function_name(self):
+        blocks = blocks_for_function_name(self.gtirb, 'generateMessageID')
+        self.assertTrue(len(blocks) > 0)
+
+    def test_first_line_for_uuid(self):
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
+            self.gtirb,
+            get_line_offset(self.gtirb, self.asm)
+        )
+        uuid_w_line = list(offset_by_line.items())[0][1].element_id.uuid
+        first_line = first_line_for_uuid(offset_by_line, uuid_w_line)
+        self.assertTrue(isinstance(first_line, int))
+
+    def test_function_blocks_to_lines(self):
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
+            self.gtirb,
+            get_line_offset(self.gtirb, self.asm)
+        )
+        blocks = blocks_for_function_name(self.gtirb, 'generateMessageID')
+        self.assertTrue(len(blocks) > 0)
+        line = first_line_for_blocks(offset_by_line, blocks)
+        self.assertTrue(isinstance(line, int))

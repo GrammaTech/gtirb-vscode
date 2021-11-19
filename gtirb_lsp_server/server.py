@@ -112,6 +112,29 @@ def get_block_address(module, block):
             return hex(byte_interval.address + block.offset)
     return None
 
+def blocks_for_function_name(ir: gtirb, name: str) -> Optional[set[gtirb.ByteBlock]]:
+    for uuid, symbol in ir.modules[0].aux_data['functionNames'].data.items():
+        if symbol.name == name:
+            return ir.modules[0].aux_data['functionBlocks'].data.get(uuid)
+    return None
+
+def first_line_for_uuid(offset_by_line: dict[int, gtirb.Offset], uuid: uuid.UUID) -> Optional[int]:
+    pairs = list(filter(lambda pair: pair[1].element_id.uuid == uuid,
+                        list(offset_by_line.items())))
+    if not pairs:
+        return None
+    else:
+        pairs.sort()
+        return pairs[0][0]
+
+def first_line_for_blocks(offset_by_line: dict[int, gtirb.Offset], blocks: set[gtirb.ByteBlock]):
+    first_line = None
+    for uuid in map(lambda block: block.uuid, blocks):
+        current_line = first_line_for_uuid(offset_by_line, uuid)
+        if current_line:
+            if not first_line or current_line < first_line:
+                first_line = current_line
+    return first_line
 
 #
 # chars to strip out so as to leave a line consisting of actual tokens
@@ -285,25 +308,33 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
         return None
 
     ir = current_gtirbs[params.text_document.uri]
-    key = None
-    for uuid, symbol in ir.modules[0].aux_data['functionNames'].data.items():
-        if symbol.name == current_token:
-            # Find the first line inside of the function blocks
-            blocks = ir.modules[0].aux_data['functionBlocks'].data.get(uuid)
-            for line in range(len(current_lines)):
-                if line_to_offset(params.text_document.uri, line) in blocks:
-                    definition_line: str = current_lines[line]
-                    return Location(
-                        uri = params.text_document.uri,
-                        range = Range(
-                            start = Position(line = adef,
-                                character = definition_line.find(current_token)),
-                            end = Position(line = adef,
-                                character = (definition_line.find(current_token) +
-                                             len(current_token)))))
-            break
+    if ir == None:
+        ls.show_message(f" document {params.text_document.uri} has no GTIRB.")
+        return None
+    logger.debug(f"ir found")
 
-    return None
+    blocks = blocks_for_function_name(ir, current_token)
+    if blocks == None:
+        ls.show_message(f" no function blocks for {current_token}")
+        return None
+    logger.debug(f"blocks found: {blocks}")
+
+    line = first_line_for_blocks(current_indexes[params.text_document.uri][0], blocks)
+    if line == None:
+        ls.show_message(f" no lines in ASM for blocks {blocks}")
+        return None
+    logger.debug(f"line found: {line}")
+
+    definition_line: str = current_lines[line]
+    return Location(
+        uri = params.text_document.uri,
+        range = Range(
+            start = Position(line = adef,
+                             character = definition_line.find(current_token)),
+            end = Position(line = adef,
+                           character = (definition_line.find(current_token) +
+                                        len(current_token)))))
+
 
 # remove async ? test code does not have.
 #    async def get_references(ls, params: ReferenceParams):
