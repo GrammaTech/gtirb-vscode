@@ -90,10 +90,12 @@ def offset_to_auxdata(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
         return result
 
 def offset_to_predecessors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gtirb.Offset]]:
-    return map(lambda edge: gtirb.Offset(edge.source, 0), ir.cfg.in_edges[offset.element_id])
+    return map(lambda edge: gtirb.Offset(edge.source, 0),
+               ir.cfg.in_edges(offset.element_id))
 
 def offset_to_successors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gtirb.Offset]]:
-    return map(lambda edge: gtirb.Offset(edge.target, 0), ir.cfg.out_edges[offset.element_id])
+    return map(lambda edge: gtirb.Offset(edge.target, 0),
+               ir.cfg.out_edges(offset.element_id))
 
 # Local class allows addition  of a configuration section
 # See pygls example: json language server
@@ -141,6 +143,13 @@ def first_line_for_blocks(offset_by_line: dict[int, gtirb.Offset], blocks: set[g
             if not first_line or current_line < first_line:
                 first_line = current_line
     return first_line
+
+def symbol_for_name(ir: gtirb, name: str) -> Optional[gtirb.Symbol]:
+    symbols = list(filter(lambda s: s.name == name, ir.modules[0].symbols))
+    if symbols:
+        return symbols[0]
+    else:
+        return None
 
 #
 # chars to strip out so as to leave a line consisting of actual tokens
@@ -377,6 +386,7 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         current_line = current_lines[params.position.line]
         current_token = isolate_token(current_line, params.position.character)
         if current_token == None or len(current_token) == 0:
+            ls.show_message(f" no token found for {params.position.line}:{params.position.character}")
             return None
     else:
         # Check if cache exists ono file system?
@@ -384,22 +394,33 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         return None
 
     ir = current_gtirbs[params.text_document.uri]
-    offset = line_to_offset(params.text_document.uri, current_line)
-    if offset:
-        for line in map(lambda off: offset_to_line(params.text_document.uri, off),
-                        (list(offset_to_predecessors(ir, offset)) +
-                         list(offset_to_successors(ir, offset)))):
-            reference_line: str = current_lines[line]
-            locations.append(Location(
-                uri = params.text_document.uri,
-                range = Range(
-                    start = Position(line = line,
-                                     character = reference_line.find(current_token)),
-                    end = Position(line = line,
-                                   character = (reference_line.find(current_token) +
-                                                len(current_token))))))
-    else:
-        ls.show_message(f" no offset associated with {params.text_document.uri}:{line}")
+    if ir == None:
+        ls.show_message(f" document {params.text_document.uri} has no GTIRB.")
+        return None
+    logger.debug(f"ir found")
+
+    symbol = symbol_for_name(ir, current_token)
+    if symbol == None:
+        ls.show_message(f" no symbol for line {token}.")
+        return None
+    logger.debug(f"symbol found:{symbol}")
+
+    line = first_line_for_uuid(current_indexes[params.text_document.uri][0], symbol.referent.uuid)
+    if line == None:
+        ls.show_message(f" no line for uuid {symbol.referent}.")
+        return None
+    logger.debug(f"line found:{line}")
+
+    line = preceding_function_line(current_text, current_token, line)
+    reference_line: str = current_lines[line]
+    locations.append(Location(
+        uri = params.text_document.uri,
+        range = Range(
+            start = Position(line = line,
+                             character = reference_line.find(current_token)),
+            end = Position(line = line,
+                           character = (reference_line.find(current_token) +
+                                        len(current_token))))))
 
     return locations
 
