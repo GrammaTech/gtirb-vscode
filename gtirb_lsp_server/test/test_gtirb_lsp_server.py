@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Text
 from uuid import UUID
 
-from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_auxdata, offset_indexed_aux_data, blocks_for_function_name, first_line_for_blocks, first_line_for_uuid
+from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_auxdata, offset_indexed_aux_data, blocks_for_function_name, first_line_for_blocks, first_line_for_uuid, preceding_function_line
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -81,7 +81,13 @@ class InitialIndexTestDriver(unittest.TestCase):
             self.gtirb,
             get_line_offset(self.gtirb, self.asm)
         )
-        blocks = blocks_for_function_name(self.gtirb, 'generateMessageID')
+        blocks = blocks_for_function_name(self.gtirb, 'freeservers')
         self.assertTrue(len(blocks) > 0)
         line = first_line_for_blocks(offset_by_line, blocks)
         self.assertTrue(isinstance(line, int))
+
+    def test_preceding_function_line(self):
+        func_name = 'freeservers'
+        func_line = 9878
+        preceding_line = preceding_function_line(self.asm, func_name, func_line)
+        self.assertEqual(preceding_line, 9876)

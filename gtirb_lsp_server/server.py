@@ -154,6 +154,17 @@ def isolate_token(line: str, pos: int) -> str:
             return m.group()
     return ""
 
+def preceding_function_line(asm: str, name: str, line: int) -> Optional[int]:
+    logger.debug(f"preceding_function_line(asm, '{name}', {line})")
+    name_re = re.compile(name+':')
+    addr_re = re.compile("# EA: (0x[0-9a-f]+)$")
+    lines = asm.splitlines()
+    for i in range(1, line):
+        if name_re.search(lines[line-i]):
+            return line-i
+        elif addr_re.search(lines[line-i]):
+            return None
+    return None
 
 def get_line_offset(ir: gtirb, text: str) -> List[Tuple[int, Tuple[int, int]]]:
     """Process ASM listing string TEXT with respect to GTIRB IR to return a
@@ -301,6 +312,7 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
         current_line = current_lines[params.position.line]
         current_token = isolate_token(current_line, params.position.character)
         if current_token == None or len(current_token) == 0:
+            ls.show_message(f" no token found for {params.position.line}:{params.position.character}")
             return None
     else:
         # Load the cached index here if it exists?
@@ -325,13 +337,15 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
         return None
     logger.debug(f"line found: {line}")
 
+    line = preceding_function_line(current_text, current_token, line)
     definition_line: str = current_lines[line]
+
     return Location(
         uri = params.text_document.uri,
         range = Range(
-            start = Position(line = adef,
+            start = Position(line = line,
                              character = definition_line.find(current_token)),
-            end = Position(line = adef,
+            end = Position(line = line,
                            character = (definition_line.find(current_token) +
                                         len(current_token)))))
 
