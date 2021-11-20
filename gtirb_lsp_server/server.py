@@ -165,7 +165,7 @@ def isolate_token(line: str, pos: int) -> str:
         return ""
     p = re.compile('[^ \t\n\r\f\v]+')
     for m in p.finditer(replace_delims(line)):
-        if pos >= m.start() and pos < m.start()+len(m.group()):
+        if pos >= m.start() and pos <= m.start()+len(m.group()):
             return m.group()
     return ""
 
