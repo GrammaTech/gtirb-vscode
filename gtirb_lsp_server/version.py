@@ -1,3 +1,3 @@
 # flake8: noqa
-__packagename__ = 'gtirb_lsp_server'
-__version__ = '0.0.dev'
+__packagename__ = "gtirb_lsp_server"
+__version__ = "0.0.dev"

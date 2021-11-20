@@ -21,4 +21,4 @@ This extension will load a GTIRB file and display an assembly file listing of th
 
 The file setup.py provides build information to build the LSP server with. To build a wheel that can be installed with pip:
 - python3 setup.py build
-- python3 -m build --wheel 
+- python3 -m build --wheel

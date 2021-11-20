@@ -9,7 +9,7 @@ if [[ $# -lt 1 ]]; then
 	CONTINUE=false
 fi
 
-if ${CONTINUE} 
+if ${CONTINUE}
 then
 	FS_PATH=$1
 	if [[ -f ${PWD}/get-isa.py ]]; then
@@ -20,7 +20,7 @@ then
 	fi
 fi
 
-if ${CONTINUE} 
+if ${CONTINUE}
 then
 	if [[ "${ISA}" == "x86" || "${ISA}" == "x64" || "${ISA}" == "mips" || "${ISA}" == "arm" ]]; then
 		GTIRB_FOLDER=`dirname $FS_PATH`
@@ -30,7 +30,7 @@ then
 		ISA_DIR=${CACHE_PATH}/${ISA}
 		ASM_FILE="${ISA_DIR}/${GTIRB_BASE}.gtasm"
 
-		if ${DEBUG} 
+		if ${DEBUG}
 		then
 			echo "GTIRB file path: ${FS_PATH}" > ${GTIRB_FOLDER}/log.txt
 			echo "GTIRB_FOLDER: ${GTIRB_FOLDER}" >> ${GTIRB_FOLDER}/log.txt
@@ -46,7 +46,7 @@ then
 fi
 
 
-if ${CONTINUE} 
+if ${CONTINUE}
 then
 	if [[ -d ${ISA_DIR} && -f ${ASM_FILE} ]]; then
 		MESSAGE="Using existing assembly file ${ASM_FILE}"
@@ -63,9 +63,9 @@ then
 	fi
 fi
 
-if ${CONTINUE} 
+if ${CONTINUE}
 then
-	gtirb-pprinter --ir ${FS_PATH} --asm ${ASM_FILE} --listing-mode ui 
+	gtirb-pprinter --ir ${FS_PATH} --asm ${ASM_FILE} --listing-mode ui
 	if [[ ! -f ${ASM_FILE} ]]; then
 		MESSAGE="Failed to create ASM FILE ${ASM_FILE}"
 	fi

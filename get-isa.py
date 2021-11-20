@@ -1,6 +1,7 @@
 #!/usr/local/bin/python3
 #
 import sys
+
 import gtirb
 
 argnum = len(sys.argv) - 1
@@ -8,7 +9,7 @@ if argnum < 1:
     print("no filename.")
     quit()
 
-filename = sys.argv[1] 
+filename = sys.argv[1]
 
 try:
     ir = gtirb.IR.load_protobuf(filename)

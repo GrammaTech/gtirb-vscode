@@ -1,45 +1,43 @@
 # -*- coding: utf-8 -*-
 
-import os
 import json
 import logging
-import argparse
-import gtirb
-import uuid
+import os
 import re
-from collections import defaultdict
-from typing import List, Optional, Union, Tuple, Set, Dict, T
-from pygls.server import LanguageServer
-from pygls.protocol import LanguageServerProtocol
-from pygls.lsp.methods import (
-    TEXT_DOCUMENT_DID_OPEN,
-    TEXT_DOCUMENT_DID_CLOSE,
-    TEXT_DOCUMENT_DID_SAVE,
-    TEXT_DOCUMENT_DID_CHANGE,
+import uuid
+from typing import Dict, List, Optional, Set, Tuple, Union
+
+import gtirb
+from pygls.lsp.methods import (  # TEXT_DOCUMENT_DID_SAVE,
     DEFINITION,
+    HOVER,
     REFERENCES,
-    HOVER
+    TEXT_DOCUMENT_DID_CHANGE,
+    TEXT_DOCUMENT_DID_CLOSE,
+    TEXT_DOCUMENT_DID_OPEN,
 )
-from pygls.lsp.types import (
-    DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams,
-    DidCloseTextDocumentParams,
-    DidChangeTextDocumentParams,
-    Location,
-    LocationLink,
-    Position,
-    Range,
-    DefinitionParams,
+
+# from pygls.protocol import LanguageServerProtocol
+from pygls.server import LanguageServer
+
+from pygls.lsp.types import (  # DidSaveTextDocumentParams,; LocationLink,; ReferenceContext,
     DefinitionOptions,
-    ReferenceParams,
-    ReferenceOptions,
-    ReferenceContext,
+    DefinitionParams,
+    DidChangeTextDocumentParams,
+    DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams,
     Hover,
     HoverOptions,
     HoverParams,
+    Location,
+    MarkupContent,
     MarkupKind,
-    MarkupContent
+    Position,
+    Range,
+    ReferenceOptions,
+    ReferenceParams,
 )
+
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -55,15 +53,17 @@ current_gtirbs = {}
 current_indexes = {}
 current_documents = {}
 
+
 def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
     """Lookup LINE in the current indexes to return the associated OFFSET"""
     logger.debug(f"line_to_offset({document_uri}, {line})")
     try:
         return current_indexes[document_uri][0][line]
-    except:
+    except Exception:
         return None
 
-def offset_to_line(document_uri: str, offset: Union[gtirb.Offset,str,int]) -> Optional[int]:
+
+def offset_to_line(document_uri: str, offset: Union[gtirb.Offset, str, int]) -> Optional[int]:
     """Lookup OFFSET in the current indexes to return the associated LINE"""
     if isinstance(offset, str):
         uuid.UUID(hex=offset)
@@ -71,8 +71,9 @@ def offset_to_line(document_uri: str, offset: Union[gtirb.Offset,str,int]) -> Op
         uuid.UUID(int=offset)
     try:
         return current_indexes[document_uri][1][offset]
-    except:
+    except Exception:
         return None
+
 
 def offset_to_auxdata(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
     logger.debug(f"offset_to_auxdata(IR, {offset})")
@@ -89,23 +90,26 @@ def offset_to_auxdata(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
     else:
         return result
 
+
 def offset_to_predecessors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gtirb.Offset]]:
-    return map(lambda edge: gtirb.Offset(edge.source, 0),
-               ir.cfg.in_edges(offset.element_id))
+    return map(lambda edge: gtirb.Offset(edge.source, 0), ir.cfg.in_edges(offset.element_id))
+
 
 def offset_to_successors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gtirb.Offset]]:
-    return map(lambda edge: gtirb.Offset(edge.target, 0),
-               ir.cfg.out_edges(offset.element_id))
+    return map(lambda edge: gtirb.Offset(edge.target, 0), ir.cfg.out_edges(offset.element_id))
+
 
 def all_symbolic_expressions(ir: gtirb) -> Set[Tuple[int, gtirb.SymbolicExpression]]:
     return {
         ((byte_interval.address + symbolic_expression[0]), symbolic_expression[1])
-
         for byte_interval in ir.modules[0].byte_intervals
         for symbolic_expression in byte_interval.symbolic_expressions.items()
     }
 
-def symbolic_references(ir: gtirb, symbols: Union[gtirb.Symbol, List[gtirb.Symbol]]) -> List[Tuple[int, gtirb.SymbolicExpression]]:
+
+def symbolic_references(
+    ir: gtirb, symbols: Union[gtirb.Symbol, List[gtirb.Symbol]]
+) -> List[Tuple[int, gtirb.SymbolicExpression]]:
     if isinstance(symbols, gtirb.Symbol):
         uuid = symbols.uuid
         return filter(lambda pair: pair[1].symbol.uuid == uuid, all_symbolic_expressions(ir))
@@ -113,30 +117,39 @@ def symbolic_references(ir: gtirb, symbols: Union[gtirb.Symbol, List[gtirb.Symbo
         uuids = list(map(lambda s: s.uuid, symbols))
         return filter(lambda pair: pair[1].symbol.uuid in uuids, all_symbolic_expressions(ir))
 
-def offsets_at_references(ir: gtirb, references: List[Tuple[int, gtirb.SymbolicExpression]]) -> List[Tuple[gtirb.Offset, gtirb.SymbolicExpression]]:
+
+def offsets_at_references(
+    ir: gtirb, references: List[Tuple[int, gtirb.SymbolicExpression]]
+) -> List[Tuple[gtirb.Offset, gtirb.SymbolicExpression]]:
     results = []
     for (address, symbolic_expression) in references:
         for block in ir.modules[0].byte_blocks_on(address):
-            results.append((gtirb.Offset(element_id=block,
-                                         displacement=((address - block.address) - 1)),
-                            symbolic_expression))
+            results.append(
+                (
+                    gtirb.Offset(element_id=block, displacement=((address - block.address) - 1)),
+                    symbolic_expression,
+                )
+            )
     return results
+
 
 # Local class allows addition  of a configuration section
 # See pygls example: json language server
 class GtirbLanguageServer(LanguageServer):
-    CONFIGURATION_SECTION = 'gtirbServer'
+    CONFIGURATION_SECTION = "gtirbServer"
 
     def __init__(self):
         super().__init__()
+
 
 def get_byte_interval_from_block(module, thisblock):
     for section in module.sections:
         for byte_interval in section.byte_intervals:
             for block in byte_interval.blocks:
-                if (block == thisblock):
+                if block == thisblock:
                     return byte_interval
     return None
+
 
 def get_block_address(module, block):
     if type(block) is gtirb.block.CodeBlock or type(block) is gtirb.block.DataBlock:
@@ -145,29 +158,32 @@ def get_block_address(module, block):
             return hex(byte_interval.address + block.offset)
     return None
 
+
 def blocks_for_function_name(ir: gtirb, name: str) -> Optional[Set[gtirb.ByteBlock]]:
-    for uuid, symbol in ir.modules[0].aux_data['functionNames'].data.items():
+    for block_uuid, symbol in ir.modules[0].aux_data["functionNames"].data.items():
         if symbol.name == name:
-            return ir.modules[0].aux_data['functionBlocks'].data.get(uuid)
+            return ir.modules[0].aux_data["functionBlocks"].data.get(block_uuid)
     return None
 
+
 def first_line_for_uuid(offset_by_line: Dict[int, gtirb.Offset], uuid: uuid.UUID) -> Optional[int]:
-    pairs = list(filter(lambda pair: pair[1].element_id.uuid == uuid,
-                        list(offset_by_line.items())))
+    pairs = list(filter(lambda pair: pair[1].element_id.uuid == uuid, list(offset_by_line.items())))
     if not pairs:
         return None
     else:
         pairs.sort()
         return pairs[0][0]
 
+
 def first_line_for_blocks(offset_by_line: dict[int, gtirb.Offset], blocks: Set[gtirb.ByteBlock]):
     first_line = None
-    for uuid in map(lambda block: block.uuid, blocks):
-        current_line = first_line_for_uuid(offset_by_line, uuid)
+    for block_uuid in map(lambda block: block.uuid, blocks):
+        current_line = first_line_for_uuid(offset_by_line, block_uuid)
         if current_line:
             if not first_line or current_line < first_line:
                 first_line = current_line
     return first_line
+
 
 def symbol_for_name(ir: gtirb, name: str) -> Optional[gtirb.Symbol]:
     symbols = list(filter(lambda s: s.name == name, ir.modules[0].symbols))
@@ -176,35 +192,40 @@ def symbol_for_name(ir: gtirb, name: str) -> Optional[gtirb.Symbol]:
     else:
         return None
 
+
 #
 # chars to strip out so as to leave a line consisting of actual tokens
-delims = ['+', '-', '[', ']', ':', '{', '}', '*', ',']
+delims = ["+", "-", "[", "]", ":", "{", "}", "*", ","]
+
+
 def replace_delims(line):
     for ch in delims:
-        line = line.replace(ch, ' ')
+        line = line.replace(ch, " ")
     return line
 
 
 def isolate_token(line: str, pos: int) -> str:
     if pos < 0 or pos >= len(line):
         return ""
-    p = re.compile('[^ \t\n\r\f\v]+')
+    p = re.compile("[^ \t\n\r\f\v]+")
     for m in p.finditer(replace_delims(line)):
-        if pos >= m.start() and pos <= m.start()+len(m.group()):
+        if pos >= m.start() and pos <= m.start() + len(m.group()):
             return m.group()
     return ""
 
+
 def preceding_function_line(asm: str, name: str, line: int) -> Optional[int]:
     logger.debug(f"preceding_function_line(asm, '{name}', {line})")
-    name_re = re.compile(name+':')
+    name_re = re.compile(name + ":")
     addr_re = re.compile("# EA: (0x[0-9a-f]+)$")
     lines = asm.splitlines()
     for i in range(1, line):
-        if name_re.search(lines[line-i]):
-            return line-i
-        elif addr_re.search(lines[line-i]):
+        if name_re.search(lines[line - i]):
+            return line - i
+        elif addr_re.search(lines[line - i]):
             return None
     return None
+
 
 def get_line_offset(ir: gtirb, text: str) -> List[Tuple[int, Tuple[int, int]]]:
     """Process ASM listing string TEXT with respect to GTIRB IR to return a
@@ -212,11 +233,18 @@ def get_line_offset(ir: gtirb, text: str) -> List[Tuple[int, Tuple[int, int]]]:
 
     # Process the assembly code file to create a list of (address, line_number).
     addr_re = re.compile("# EA: (0x[0-9a-f]+)$")
-    address_lines = list(map(lambda pair: (int(pair[0], 16), pair[1]),
-                             filter(lambda x: x[0],
-                                    map(lambda line: ((addr_re.search(line[1]) or [None, None])[1],
-                                                      line[0]),
-                                        enumerate(text.splitlines())))))
+    address_lines = list(
+        map(
+            lambda pair: (int(pair[0], 16), pair[1]),
+            filter(
+                lambda x: x[0],
+                map(
+                    lambda line: ((addr_re.search(line[1]) or [None, None])[1], line[0]),
+                    enumerate(text.splitlines()),
+                ),
+            ),
+        )
+    )
     address_lines.sort(key=lambda x: x[0])
 
     # Process the gtirb file to create a list of (address, UUID).
@@ -233,6 +261,7 @@ def get_line_offset(ir: gtirb, text: str) -> List[Tuple[int, Tuple[int, int]]]:
 
     return line_offsets
 
+
 def line_offsets_to_maps(ir: gtirb, line_offsets):
     """Create maps from line_uuids going both ways."""
     logger.debug("Create maps from line_uuids going both ways.")
@@ -245,6 +274,7 @@ def line_offsets_to_maps(ir: gtirb, line_offsets):
         line_by_offset[offset] = line
     return (offset_by_line, line_by_offset)
 
+
 # Used to serialize UUIDs to JSON.
 # https://stackoverflow.com/questions/36588126/uuid-is-not-json-serializable
 class UUIDEncoder(json.JSONEncoder):
@@ -254,11 +284,12 @@ class UUIDEncoder(json.JSONEncoder):
             return obj.hex
         return json.JSONEncoder.default(self, obj)
 
+
 def ensure_index(text_document):
     logger.debug(f"ensure_index({text_document.uri})")
-    path_list = text_document.uri.split('//')
+    path_list = text_document.uri.split("//")
 
-    if len(path_list) > 1 and path_list[0] == 'file:':
+    if len(path_list) > 1 and path_list[0] == "file:":
         asmfile = path_list[1]
         cachedir = os.path.dirname(os.path.dirname(asmfile))
         cachedir_base = os.path.basename(cachedir)
@@ -266,7 +297,7 @@ def ensure_index(text_document):
             gtirbfile_base = cachedir_base[8:]
             gtirbfile = os.path.join(os.path.dirname(cachedir), gtirbfile_base)
             logger.info(f"gtirbfile: {gtirbfile}")
-            jsonfile = asmfile+'.json'
+            jsonfile = asmfile + ".json"
     else:
         logger.error(f"error in text document path: {text_document.uri}")
         return
@@ -284,25 +315,30 @@ def ensure_index(text_document):
         try:
             logger.info(f"Loading (line-number,offset(UUID,int)) map from JSON file: {jsonfile}")
             # Convert UUIDs back from hex to UUIDs.
-            line_offsets = list(map(lambda el: (el[0],(uuid.UUID(hex=el[1][0]),el[1][1])),
-                                    json.load(open(jsonfile,'r'))))
-        except:
+            line_offsets = list(
+                map(
+                    lambda el: (el[0], (uuid.UUID(hex=el[1][0]), el[1][1])),
+                    json.load(open(jsonfile, "r")),
+                )
+            )
+        except Exception:
             logger.info(f"Failed to load JSON file: {jsonfile}")
             line_offsets = None
 
-    if(line_offsets == None):
+    if line_offsets is None:
         logger.info(f"Populating (line-number,offset(UUID,int)) map to JSON file: {jsonfile}")
         line_offsets = get_line_offset(ir, text_document.text)
 
         # Store the resulting map into a JSON file.
         logger.debug(f"line_offsets => {line_offsets}")
-        json.dump(line_offsets, open(jsonfile,'w'), cls=UUIDEncoder)
+        json.dump(line_offsets, open(jsonfile, "w"), cls=UUIDEncoder)
 
     # Create maps from line_uuids going both ways.
     current_indexes[text_document.uri] = line_offsets_to_maps(ir, line_offsets)
 
 
 server = GtirbLanguageServer()
+
 
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
 def did_change(ls, params: DidChangeTextDocumentParams):
@@ -319,12 +355,12 @@ async def did_open(ls, params: DidOpenTextDocumentParams):
     ext = splitpath[1]
 
     # This is where to check the extension
-    if ext == '.gtasm':
+    if ext == ".gtasm":
         # Maybe make this a store of split lines so only needs to be split once
         current_documents[params.text_document.uri] = params.text_document
-        logger.info('Added to document list')
+        logger.info("Added to document list")
         ensure_index(params.text_document)
-        logger.info('finished indexing')
+        logger.info("finished indexing")
 
 
 @server.feature(TEXT_DOCUMENT_DID_CLOSE)
@@ -336,6 +372,7 @@ def did_close(ls, params: DidCloseTextDocumentParams):
         del current_indexes[params.text_document.uri]
         del current_gtirbs[params.text_document.uri]
         logger.info("removed document from list of current documents")
+
 
 @server.feature(DEFINITION, DefinitionOptions())
 def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
@@ -351,28 +388,32 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
         current_lines = current_text.splitlines()
         current_line = current_lines[params.position.line]
         current_token = isolate_token(current_line, params.position.character)
-        if current_token == None or len(current_token) == 0:
-            ls.show_message(f" no token found for {params.position.line}:{params.position.character}")
+        if current_token is None or len(current_token) == 0:
+            ls.show_message(
+                f" no token found for {params.position.line}:{params.position.character}"
+            )
             return None
     else:
         # Load the cached index here if it exists?
-        ls.show_message(f" document {params.text_document.uri} is not in the current document store.")
+        ls.show_message(
+            f" document {params.text_document.uri} is not in the current document store."
+        )
         return None
 
     ir = current_gtirbs[params.text_document.uri]
-    if ir == None:
-        ls.show_message(f" document {params.text_document.uri} has no GTIRB.")
+    if ir is None:
+        ls.show_message(" document {params.text_document.uri} has no GTIRB.")
         return None
-    logger.debug(f"ir found")
+    logger.debug("ir found")
 
     symbol = symbol_for_name(ir, current_token)
-    if symbol == None:
+    if symbol is None:
         ls.show_message(f" symbol for {current_token} not found.")
         return None
     logger.debug(f"symbol found: {symbol}")
 
     line = first_line_for_uuid(current_indexes[params.text_document.uri][0], symbol.referent.uuid)
-    if line == None:
+    if line is None:
         ls.show_message(f" no line for uuid {symbol.referent}.")
         return None
     logger.debug(f"line found: {line}")
@@ -381,18 +422,19 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
     definition_line: str = current_lines[line]
 
     return Location(
-        uri = params.text_document.uri,
-        range = Range(
-            start = Position(line = line,
-                             character = definition_line.find(current_token)),
-            end = Position(line = line,
-                           character = (definition_line.find(current_token) +
-                                        len(current_token)))))
+        uri=params.text_document.uri,
+        range=Range(
+            start=Position(line=line, character=definition_line.find(current_token)),
+            end=Position(
+                line=line, character=(definition_line.find(current_token) + len(current_token))
+            ),
+        ),
+    )
 
 
 # remove async ? test code does not have.
 #    async def get_references(ls, params: ReferenceParams):
-    # returns Optional[List[Location]]
+# returns Optional[List[Location]]
 @server.feature(REFERENCES, ReferenceOptions())
 def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
     """Text document references request."""
@@ -400,7 +442,6 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
     # put decl here so they func-global, will need them later
     # "current_text" is the text of the whole document
     current_text: str = ""
-    current_token: str = ""
     current_lines: StringList = []
     locations: LocationList = []
     if params.text_document.uri in current_documents:
@@ -413,14 +454,14 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         return None
 
     ir = current_gtirbs[params.text_document.uri]
-    if ir == None:
+    if ir is None:
         ls.show_message(f" document {params.text_document.uri} has no GTIRB.")
         return None
-    logger.debug(f"ir found")
+    logger.debug("ir found")
 
     offset = line_to_offset(params.text_document.uri, params.position.line)
-    if offset == None:
-        ls.show_message(f" no offset found for line {line}.")
+    if offset is None:
+        ls.show_message(f" no offset found for line {params.position.line}.")
         return None
     logger.debug(f"offset found: {offset}")
 
@@ -436,11 +477,18 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         return None
     logger.debug(f"offsets found: {offsets_and_symbolic_expressions}")
 
-    lines_and_symbolic_expressions = list(filter(
-        lambda it: isinstance(it[0], int),
-        map(lambda off_and_se: (offset_to_line(params.text_document.uri, off_and_se[0]),
-                                off_and_se[1]),
-            offsets_and_symbolic_expressions)))
+    lines_and_symbolic_expressions = list(
+        filter(
+            lambda it: isinstance(it[0], int),
+            map(
+                lambda off_and_se: (
+                    offset_to_line(params.text_document.uri, off_and_se[0]),
+                    off_and_se[1],
+                ),
+                offsets_and_symbolic_expressions,
+            ),
+        )
+    )
     if len(lines_and_symbolic_expressions) == 0:
         ls.show_message(f" no lines for offsets {offsets_and_symbolic_expressions}.")
         return None
@@ -453,20 +501,30 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
             if reference_line.find(sym.name):
                 token = sym.name
         if token:
-            locations.append(Location(
-                uri = params.text_document.uri,
-                range = Range(
-                    start = Position(line = line, character = reference_line.find(token)),
-                    end = Position(line = line, character = (reference_line.find(token) +
-                                                             len(token))))))
+            locations.append(
+                Location(
+                    uri=params.text_document.uri,
+                    range=Range(
+                        start=Position(line=line, character=reference_line.find(token)),
+                        end=Position(
+                            line=line, character=(reference_line.find(token) + len(token))
+                        ),
+                    ),
+                )
+            )
         else:
-            locations.append(Location(
-                uri = params.text_document.uri,
-                range = Range(
-                    start = Position(line = line, character = 0),
-                    end = Position(line = line, character = len(reference_line)))))
+            locations.append(
+                Location(
+                    uri=params.text_document.uri,
+                    range=Range(
+                        start=Position(line=line, character=0),
+                        end=Position(line=line, character=len(reference_line)),
+                    ),
+                )
+            )
 
     return locations
+
 
 @server.feature(HOVER, HoverOptions())
 def get_hover(ls, params: HoverParams) -> Optional[Hover]:
@@ -477,22 +535,12 @@ def get_hover(ls, params: HoverParams) -> Optional[Hover]:
     else:
         auxdata = None
 
-    if (auxdata == None):
+    if auxdata is None:
         logger.debug("No auxdata found")
-        return Hover(
-            contents=MarkupContent(
-                kind=MarkupKind.PlainText,
-                value="No auxdata found"
-            )
-        )
+        return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found"))
     else:
         logger.debug(f"Returning auxdata: {auxdata}")
-        return Hover(
-            contents=MarkupContent(
-                kind=MarkupKind.PlainText,
-                value=auxdata
-            )
-        )
+        return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value=auxdata))
 
 
 def offset_indexed_aux_data(ir: gtirb) -> List[str]:
@@ -504,6 +552,7 @@ def offset_indexed_aux_data(ir: gtirb) -> List[str]:
             continue
         results += [name]
     return results
+
 
 def gtirb_tcp_server(host: str, port: int) -> None:
     server.start_tcp(host, port)

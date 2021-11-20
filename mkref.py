@@ -1,10 +1,11 @@
 #!/usr/local/bin/python3
-# 
+#
+import json
 import os
 import sys
-import gtirb
-import json
 from collections import defaultdict
+
+import gtirb
 
 argnum = len(sys.argv) - 1
 if argnum < 1:
@@ -13,12 +14,12 @@ if argnum < 1:
     quit()
 
 asmfile = sys.argv[1]
-gtirbfile = os.path.splitext(asmfile)[0];
-xreffile = asmfile+'.json' 
+gtirbfile = os.path.splitext(asmfile)[0]
+xreffile = asmfile + ".json"
 
-print ("GTIRB file:            %s" % gtirbfile)
-print ("Assembly file:         %s" % asmfile)
-print ("Cross reference file:  %s" % xreffile)
+print("GTIRB file:            %s" % gtirbfile)
+print("Assembly file:         %s" % asmfile)
+print("Cross reference file:  %s" % xreffile)
 
 try:
     ir = gtirb.IR.load_protobuf(gtirbfile)
@@ -44,29 +45,24 @@ try:
                 line_minus_last = line[:-2]
                 if line_minus_last in symlist:
                     defs[line_minus_last] = i
-                    #print("found def of %s at %d" % (line_minus_last, i))
+                    # print("found def of %s at %d" % (line_minus_last, i))
 
             # parse the tokens to see if any are a symbol
             for word in line.strip().split():
                 if word in symlist:
-                    #print("found reference to %s at line %d" % (word, i))
+                    # print("found reference to %s at line %d" % (word, i))
                     refs[word].append(i)
 except Exception as inst:
     print(inst)
     print("Unable to load assembly file %s." % asmfile)
     quit()
 
-#for key in refs:
+# for key in refs:
 #    line = f"{key} {' '.join(map(str,refs[key]))}"
 #    print(line)
 
-x = {
-    "gtirb": gtirbfile,
-    "asm": asmfile,
-    "xref": refs,
-    "def": defs
-}
-#print(json.dumps(x))
+x = {"gtirb": gtirbfile, "asm": asmfile, "xref": refs, "def": defs}
+# print(json.dumps(x))
 try:
     with open(xreffile, "w") as out:
         json.dump(x, out, indent=4)

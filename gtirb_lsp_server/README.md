@@ -8,7 +8,7 @@ To install this module on your system, first clone this repository. Then, build 
 ```
  % python3 setup.py build
  % python3 setup.py bdist_wheel --dist-dir=$PWD
- % pip3 install $PWD/cwgtirb_lsp_server-VERSION-py2.py3-none-any.whl 
+ % pip3 install $PWD/cwgtirb_lsp_server-VERSION-py2.py3-none-any.whl
 ```
 
 ## As a command line tool
@@ -16,7 +16,7 @@ To install this module on your system, first clone this repository. Then, build 
 Starting STDIO server
 
 ```
-% gtirb_lsp_server 
+% gtirb_lsp_server
 ```
 
 Starting a TCP based server

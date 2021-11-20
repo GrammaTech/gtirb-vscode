@@ -9,7 +9,7 @@ import * as fs from 'fs';
 const execShell = (cmd: string) =>
     new Promise<string>((resolve, reject) => {
         cp.exec(cmd, (err, out) => {
-            if (err) { 
+            if (err) {
                 return reject(err);
             }
             return resolve(out);
@@ -26,24 +26,24 @@ const execShell = (cmd: string) =>
 	): GtirbDocument {
 	return new GtirbDocument(uri);
 	}
-  
+
 	private readonly _uri: vscode.Uri;
-  
+
 	private constructor(uri: vscode.Uri) {
       super();
       this._uri = uri;
 	}
-  
+
 	public get uri() {
         return this._uri;
 	}
-  
+
 	private readonly _onDidDispose = this._register(
         new vscode.EventEmitter<void>()
 	);
-  
+
 	public readonly onDidDispose = this._onDidDispose.event;
-  
+
 	dispose(): void {
 		const parsedPath = path.parse(this._uri.fsPath);
 		const cachePath = path.join(parsedPath.dir, '.vscode.'.concat(parsedPath.base));
@@ -73,10 +73,10 @@ const execShell = (cmd: string) =>
         super.dispose();
 	}
   }
-  
+
 /**
  * Provider for gtirb editors.
- * 
+ *
  */
 export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<GtirbDocument> {
 
@@ -102,8 +102,8 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 	}
 
 	async openCustomDocument(
-			uri: vscode.Uri, 
-			openContext: vscode.CustomDocumentOpenContext, 
+			uri: vscode.Uri,
+			openContext: vscode.CustomDocumentOpenContext,
 			token: vscode.CancellationToken
 	): Promise<GtirbDocument> {
 		const document: GtirbDocument = GtirbDocument.create(uri);
@@ -133,8 +133,8 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 
 	/**
 	 * Called when our custom editor is opened.
-	 * 
-	 * 
+	 *
+	 *
 	 */
 	async resolveCustomEditor(
 		document: GtirbDocument,

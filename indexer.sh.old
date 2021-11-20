@@ -40,12 +40,12 @@ if [[ $# -gt 0 ]]; then
 			else
 				if [[ ! -d ${ISA_DIR} ]]; then
 					mkdir ${ISA_DIR}
-				fi 
+				fi
 				if [[ ! -d ${ISA_DIR} && ${DEBUG} ]]; then
 					echo "Failed to create ISA subdir ${ISA_DIR}" >> ${GTIRB_FOLDER}/log.txt
 				else
 					echo "creating asm file ${ASM_FILE}"
-					gtirb-pprinter --ir ${FS_PATH} --asm ${ASM_FILE} 
+					gtirb-pprinter --ir ${FS_PATH} --asm ${ASM_FILE}
 					if [[ ! -f ${ASM_FILE} && ${DEBUG} ]]; then
 						echo "Failed to create ASM FILE ${ASM_FILE}" >> ${GTIRB_FOLDER}/log.txt
 					fi
@@ -56,7 +56,7 @@ if [[ $# -gt 0 ]]; then
 	else
 		echo "BAD ISA: ${ISA}"
 	fi
-		
+
 else
 	echo "No file."
 	echo "Usage: $0 <gtirb-file-name>"
