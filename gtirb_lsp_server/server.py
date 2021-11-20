@@ -401,7 +401,7 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
 
     symbol = symbol_for_name(ir, current_token)
     if symbol == None:
-        ls.show_message(f" no symbol for line {token}.")
+        ls.show_message(f" symbol for {current_token} not found.")
         return None
     logger.debug(f"symbol found:{symbol}")
 
