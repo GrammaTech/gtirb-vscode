@@ -8,7 +8,7 @@ import gtirb
 import uuid
 import re
 from collections import defaultdict
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Union, Tuple, Set, Dict
 from pygls.server import LanguageServer
 from pygls.protocol import LanguageServerProtocol
 from pygls.lsp.methods import (
@@ -120,13 +120,13 @@ def get_block_address(module, block):
             return hex(byte_interval.address + block.offset)
     return None
 
-def blocks_for_function_name(ir: gtirb, name: str) -> Optional[set[gtirb.ByteBlock]]:
+def blocks_for_function_name(ir: gtirb, name: str) -> Optional[Set[gtirb.ByteBlock]]:
     for uuid, symbol in ir.modules[0].aux_data['functionNames'].data.items():
         if symbol.name == name:
             return ir.modules[0].aux_data['functionBlocks'].data.get(uuid)
     return None
 
-def first_line_for_uuid(offset_by_line: dict[int, gtirb.Offset], uuid: uuid.UUID) -> Optional[int]:
+def first_line_for_uuid(offset_by_line: Dict[int, gtirb.Offset], uuid: uuid.UUID) -> Optional[int]:
     pairs = list(filter(lambda pair: pair[1].element_id.uuid == uuid,
                         list(offset_by_line.items())))
     if not pairs:
@@ -135,7 +135,7 @@ def first_line_for_uuid(offset_by_line: dict[int, gtirb.Offset], uuid: uuid.UUID
         pairs.sort()
         return pairs[0][0]
 
-def first_line_for_blocks(offset_by_line: dict[int, gtirb.Offset], blocks: set[gtirb.ByteBlock]):
+def first_line_for_blocks(offset_by_line: dict[int, gtirb.Offset], blocks: Set[gtirb.ByteBlock]):
     first_line = None
     for uuid in map(lambda block: block.uuid, blocks):
         current_line = first_line_for_uuid(offset_by_line, uuid)
