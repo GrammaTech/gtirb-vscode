@@ -313,7 +313,7 @@ def did_close(ls, params: DidCloseTextDocumentParams):
         logger.info("removed document from list of current documents")
 
 @server.feature(DEFINITION, DefinitionOptions())
-def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, List[Location], List[LocationLink]]]:
+def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
     """Text document definition request."""
     logger.info(f"Definition request received uri: {params.text_document.uri}")
     current_line: str = ""
@@ -340,15 +340,15 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Union[Location, Lis
         return None
     logger.debug(f"ir found")
 
-    blocks = blocks_for_function_name(ir, current_token)
-    if blocks == None:
-        ls.show_message(f" no function blocks for {current_token}")
+    symbol = symbol_for_name(ir, current_token)
+    if symbol == None:
+        ls.show_message(f" symbol for {current_token} not found.")
         return None
-    logger.debug(f"blocks found: {blocks}")
+    logger.debug(f"symbol found: {symbol}")
 
-    line = first_line_for_blocks(current_indexes[params.text_document.uri][0], blocks)
+    line = first_line_for_uuid(current_indexes[params.text_document.uri][0], symbol.referent.uuid)
     if line == None:
-        ls.show_message(f" no lines in ASM for blocks {blocks}")
+        ls.show_message(f" no line for uuid {symbol.referent}.")
         return None
     logger.debug(f"line found: {line}")
 
