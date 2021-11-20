@@ -113,12 +113,13 @@ def symbolic_references(ir: gtirb, symbols: Union[gtirb.Symbol, List[gtirb.Symbo
         uuids = list(map(lambda s: s.uuid, symbols))
         return filter(lambda pair: pair[1].symbol.uuid in uuids, all_symbolic_expressions(ir))
 
-def offsets_at_references(ir: gtirb, references: List[Tuple[int, gtirb.SymbolicExpression]]) -> List[gtirb.Offset]:
+def offsets_at_references(ir: gtirb, references: List[Tuple[int, gtirb.SymbolicExpression]]) -> List[Tuple[gtirb.Offset, gtirb.SymbolicExpression]]:
     results = []
     for (address, symbolic_expression) in references:
         for block in ir.modules[0].byte_blocks_on(address):
-            results.append(gtirb.Offset(element_id=block,
-                                        displacement=((address - block.address) - 1)))
+            results.append((gtirb.Offset(element_id=block,
+                                         displacement=((address - block.address) - 1)),
+                            symbolic_expression))
     return results
 
 # Local class allows addition  of a configuration section
@@ -429,27 +430,41 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         return None
     logger.debug(f"references found: {references}")
 
-    offsets = offsets_at_references(ir, references)
-    if len(offsets) == 0:
+    offsets_and_symbolic_expressions = offsets_at_references(ir, references)
+    if len(offsets_and_symbolic_expressions) == 0:
         ls.show_message(f" no offsets found for {references}.")
         return None
-    logger.debug(f"offsets found: {offsets}")
+    logger.debug(f"offsets found: {offsets_and_symbolic_expressions}")
 
-    lines = list(filter(lambda it: isinstance(it, int),
-                        map(lambda off: offset_to_line(params.text_document.uri, off),
-                            offsets)))
-    if len(lines) == 0:
-        ls.show_message(f" no lines for offsets {offsets}.")
+    lines_and_symbolic_expressions = list(filter(
+        lambda it: isinstance(it[0], int),
+        map(lambda off_and_se: (offset_to_line(params.text_document.uri, off_and_se[0]),
+                                off_and_se[1]),
+            offsets_and_symbolic_expressions)))
+    if len(lines_and_symbolic_expressions) == 0:
+        ls.show_message(f" no lines for offsets {offsets_and_symbolic_expressions}.")
         return None
-    logger.debug(f"lines found: {lines}")
+    logger.debug(f"lines found: {lines_and_symbolic_expressions}")
 
-    for line in lines:
+    for (line, symbolic_expression) in lines_and_symbolic_expressions:
         reference_line: str = current_lines[line]
-        locations.append(Location(
-            uri = params.text_document.uri,
-            range = Range(
-                start = Position(line = line, character = 0),
-                end = Position(line = line, character = len(reference_line)))))
+        token = None
+        for sym in symbolic_expression.symbols:
+            if reference_line.find(sym.name):
+                token = sym.name
+        if token:
+            locations.append(Location(
+                uri = params.text_document.uri,
+                range = Range(
+                    start = Position(line = line, character = reference_line.find(token)),
+                    end = Position(line = line, character = (reference_line.find(token) +
+                                                             len(token))))))
+        else:
+            locations.append(Location(
+                uri = params.text_document.uri,
+                range = Range(
+                    start = Position(line = line, character = 0),
+                    end = Position(line = line, character = len(reference_line)))))
 
     return locations
 

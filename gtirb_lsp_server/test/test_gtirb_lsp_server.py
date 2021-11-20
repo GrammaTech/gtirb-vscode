@@ -116,4 +116,5 @@ class InitialIndexTestDriver(unittest.TestCase):
         print(f"First reference is {references[0]}")
         offsets = list(offsets_at_references(self.gtirb, references))
         self.assertTrue(len(offsets) > 0)
-        self.assertTrue(isinstance(offsets[0], gtirb.Offset))
+        self.assertTrue(isinstance(offsets[0][0], gtirb.Offset))
+        self.assertTrue(isinstance(offsets[0][1], gtirb.SymbolicExpression))
