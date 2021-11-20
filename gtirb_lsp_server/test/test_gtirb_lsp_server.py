@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional, Text
 from uuid import UUID
 
-from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_auxdata, offset_indexed_aux_data, blocks_for_function_name, first_line_for_blocks, first_line_for_uuid, preceding_function_line, offset_to_predecessors, offset_to_successors
+from gtirb_lsp_server.server import get_line_offset, UUIDEncoder, line_offsets_to_maps, offset_to_auxdata, offset_indexed_aux_data, blocks_for_function_name, first_line_for_blocks, first_line_for_uuid, preceding_function_line, offset_to_predecessors, offset_to_successors, symbolic_references, offsets_at_references
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -103,3 +103,17 @@ class InitialIndexTestDriver(unittest.TestCase):
         successors = list(offset_to_successors(self.gtirb,
                                                gtirb.Offset(element_id=it, displacement=0)))
         self.assertTrue(len(successors) > 0)
+
+    def test_offsets_at_references(self):
+        it = gtirb.Symbol(uuid=UUID('f73cd30c-c24e-4ad3-913a-c1be4545c7e4'),
+                          name='.L_410757',
+                          payload=gtirb.CodeBlock(
+                              uuid=UUID('32737754-db68-4bbe-a9df-18f8032208ca'),
+                              size=5, offset=52919, decode_mode=1),
+                          at_end=False)
+        references = list(symbolic_references(self.gtirb, it))
+        self.assertTrue(len(references) > 0)
+        print(f"First reference is {references[0]}")
+        offsets = list(offsets_at_references(self.gtirb, references))
+        self.assertTrue(len(offsets) > 0)
+        self.assertTrue(isinstance(offsets[0], gtirb.Offset))

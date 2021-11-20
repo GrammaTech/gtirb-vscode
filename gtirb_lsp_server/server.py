@@ -8,7 +8,7 @@ import gtirb
 import uuid
 import re
 from collections import defaultdict
-from typing import List, Optional, Union, Tuple, Set, Dict
+from typing import List, Optional, Union, Tuple, Set, Dict, T
 from pygls.server import LanguageServer
 from pygls.protocol import LanguageServerProtocol
 from pygls.lsp.methods import (
@@ -96,6 +96,30 @@ def offset_to_predecessors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gti
 def offset_to_successors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gtirb.Offset]]:
     return map(lambda edge: gtirb.Offset(edge.target, 0),
                ir.cfg.out_edges(offset.element_id))
+
+def all_symbolic_expressions(ir: gtirb) -> Set[Tuple[int, gtirb.SymbolicExpression]]:
+    return {
+        ((byte_interval.address + symbolic_expression[0]), symbolic_expression[1])
+
+        for byte_interval in ir.modules[0].byte_intervals
+        for symbolic_expression in byte_interval.symbolic_expressions.items()
+    }
+
+def symbolic_references(ir: gtirb, symbols: Union[gtirb.Symbol, List[gtirb.Symbol]]) -> List[Tuple[int, gtirb.SymbolicExpression]]:
+    if isinstance(symbols, gtirb.Symbol):
+        uuid = symbols.uuid
+        return filter(lambda pair: pair[1].symbol.uuid == uuid, all_symbolic_expressions(ir))
+    else:
+        uuids = list(map(lambda s: s.uuid, symbols))
+        return filter(lambda pair: pair[1].symbol.uuid in uuids, all_symbolic_expressions(ir))
+
+def offsets_at_references(ir: gtirb, references: List[Tuple[int, gtirb.SymbolicExpression]]) -> List[gtirb.Offset]:
+    results = []
+    for (address, symbolic_expression) in references:
+        for block in ir.modules[0].byte_blocks_on(address):
+            results.append(gtirb.Offset(element_id=block,
+                                        displacement=((address - block.address) - 1)))
+    return results
 
 # Local class allows addition  of a configuration section
 # See pygls example: json language server
@@ -374,7 +398,6 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
     logger.info(f"References request received uri: {params.text_document.uri}")
     # put decl here so they func-global, will need them later
     # "current_text" is the text of the whole document
-    current_line: str = ""
     current_text: str = ""
     current_token: str = ""
     current_lines: StringList = []
@@ -383,11 +406,6 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         text_document = current_documents[params.text_document.uri]
         current_text = text_document.text
         current_lines = current_text.splitlines()
-        current_line = current_lines[params.position.line]
-        current_token = isolate_token(current_line, params.position.character)
-        if current_token == None or len(current_token) == 0:
-            ls.show_message(f" no token found for {params.position.line}:{params.position.character}")
-            return None
     else:
         # Check if cache exists ono file system?
         ls.show_message(f" document {params.text_document.uri} is not in the current store.")
@@ -399,28 +417,39 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         return None
     logger.debug(f"ir found")
 
-    symbol = symbol_for_name(ir, current_token)
-    if symbol == None:
-        ls.show_message(f" symbol for {current_token} not found.")
+    offset = line_to_offset(params.text_document.uri, params.position.line)
+    if offset == None:
+        ls.show_message(f" no offset found for line {line}.")
         return None
-    logger.debug(f"symbol found:{symbol}")
+    logger.debug(f"offset found: {offset}")
 
-    line = first_line_for_uuid(current_indexes[params.text_document.uri][0], symbol.referent.uuid)
-    if line == None:
-        ls.show_message(f" no line for uuid {symbol.referent}.")
+    references = list(symbolic_references(ir, offset.element_id.references))
+    if len(references) == 0:
+        ls.show_message(f" no references found for {offset}.")
         return None
-    logger.debug(f"line found:{line}")
+    logger.debug(f"references found: {references}")
 
-    line = preceding_function_line(current_text, current_token, line)
-    reference_line: str = current_lines[line]
-    locations.append(Location(
-        uri = params.text_document.uri,
-        range = Range(
-            start = Position(line = line,
-                             character = reference_line.find(current_token)),
-            end = Position(line = line,
-                           character = (reference_line.find(current_token) +
-                                        len(current_token))))))
+    offsets = offsets_at_references(ir, references)
+    if len(offsets) == 0:
+        ls.show_message(f" no offsets found for {references}.")
+        return None
+    logger.debug(f"offsets found: {offsets}")
+
+    lines = list(filter(lambda it: isinstance(it, int),
+                        map(lambda off: offset_to_line(params.text_document.uri, off),
+                            offsets)))
+    if len(lines) == 0:
+        ls.show_message(f" no lines for offsets {offsets}.")
+        return None
+    logger.debug(f"lines found: {lines}")
+
+    for line in lines:
+        reference_line: str = current_lines[line]
+        locations.append(Location(
+            uri = params.text_document.uri,
+            range = Range(
+                start = Position(line = line, character = 0),
+                end = Position(line = line, character = len(reference_line)))))
 
     return locations
 
