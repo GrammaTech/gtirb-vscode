@@ -31,6 +31,6 @@ setuptools.setup(
     author_email="gtirb@grammatech.com",
     description="LSP server for GTIRB",
     packages=setuptools.find_packages(),
-    install_requires=["gtirb >= 1.10.4", "packaging"],
+    install_requires=["gtirb >= 1.10.4", "pygls", "packaging"],
     classifiers=["Programming Language :: Python :: 3"],
 )

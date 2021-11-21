@@ -2,6 +2,7 @@ flake8
 isort
 pkginfo
 pre-commit
+pygls
 pytest
 pytest-cov
 requests
