@@ -175,7 +175,7 @@ def first_line_for_uuid(offset_by_line: Dict[int, gtirb.Offset], uuid: uuid.UUID
         return pairs[0][0]
 
 
-def first_line_for_blocks(offset_by_line: dict[int, gtirb.Offset], blocks: Set[gtirb.ByteBlock]):
+def first_line_for_blocks(offset_by_line: Dict[int, gtirb.Offset], blocks: Set[gtirb.ByteBlock]):
     first_line = None
     for block_uuid in map(lambda block: block.uuid, blocks):
         current_line = first_line_for_uuid(offset_by_line, block_uuid)
