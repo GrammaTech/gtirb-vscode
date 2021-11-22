@@ -28,6 +28,7 @@ This extension will load a GTIRB file and display an assembly file listing of th
 
 You can install the extension as a .vsix file, and it will appear in vscode with all your other installed extensions. To install, run the following command in this folder:
 - code --install-extension gtirb-vsix-0.0.1.vsix
+
 And start vscode. You should now see GTIRB in your list of extensions. The extension will start up automatically whenever you open a file with the ".gtirb" extension. You can uninstall the extension from within the GUI, or with the following command:
 - code --uninstall-extension gtirb-vsix-0.0.1.vsix
 
