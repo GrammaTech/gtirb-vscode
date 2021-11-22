@@ -1,10 +1,10 @@
 {
     "name": "gtirb-vscode",
-    "displayName": "GTIRB Loader",
-    "description": "Load GTIRB files",
+    "displayName": "GTIRB",
+    "description": "Load and view GTIRB files",
     "version": "0.0.1",
     "publisher": "grammatech",
-    "license": "MIT",
+    "license": "proprietary",
     "repository": {
         "type": "git",
         "url": "https://git.grammatech.com/rewriting/gtirb-vscode"
