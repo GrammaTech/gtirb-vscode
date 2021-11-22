@@ -3,6 +3,7 @@
 A VSCode extension for viewing and navigating GTIRB, Grammatech's IR for Binaries.
 
 ## Prerequisites
+
 - vscode (https://code.visualstudio.com/download).
 - python 3.6+.
 - You must have gtirb available as a python package and gtirb-pprinter version 1.8.2, which supports UI listing mode.
@@ -10,9 +11,9 @@ A VSCode extension for viewing and navigating GTIRB, Grammatech's IR for Binarie
 
 ## Functionality
 
-This extension will load a GTIRB file and display an assembly file listing of the file contents. Hovering will bring up any AuxData associated with the current line, and can navigate to definitions by putting the cursor on a symbol anf hitting F12 (or right click and select "Go To Definition").
+This extension will load a GTIRB file and display an assembly file listing of the file contents. Hovering will bring up any AuxData associated with the current line, and you can navigate to definitions by putting the cursor on a symbol and hitting F12 (or right click and select "Go To Definition").  You can also get referents to a function (or label) by going to the definition, right-clicking in the first block of instructions, and selecting "Find All References" (Alt+Shift+F12)
 
-## Running the Sample
+## Running in the repostiory
 
 - Run `npm install` in this folder. This installs all necessary npm modules in both the client and server folder.
 - Open VS Code on this folder.
