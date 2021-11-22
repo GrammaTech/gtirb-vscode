@@ -1,2 +1,3 @@
 gtirb_lsp_server.egg-info/
 .coverage
+test/data/.vscode.*
