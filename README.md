@@ -11,7 +11,7 @@ This extension will load a GTIRB file and display an assembly file listing of th
 - Run `npm install` in this folder. This installs all necessary npm modules in both the client and server folder
 - Open VS Code on this folder.
 - Open settings.json in the .vscode directory and check that "python.pythonPath" is correct for your system.
-- Press Ctrl+Shift+B to compile the extension
+- Press Ctrl+Shift+B (Apple+Shift+B on a Mac) to compile the extension
 - Switch to the Debug viewlet.
 - Select `Launch Client+Server` from the drop down.
 - Run the launch config.
