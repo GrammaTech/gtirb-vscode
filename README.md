@@ -13,7 +13,7 @@ A VSCode extension for viewing and navigating GTIRB, Grammatech's IR for Binarie
 
 This extension will load a GTIRB file and display an assembly file listing of the file contents. Hovering will bring up any AuxData associated with the current line, and you can navigate to definitions by putting the cursor on a symbol and hitting F12 (or right click and select "Go To Definition").  You can also get referents to a function (or label) by going to the definition, right-clicking in the first block of instructions, and selecting "Find All References" (Alt+Shift+F12)
 
-## Running in the repostiory
+## Running in the repository
 
 - Run `npm install` in this folder. This installs all necessary npm modules in both the client and server folder.
 - Open VS Code on this folder.
@@ -22,13 +22,13 @@ This extension will load a GTIRB file and display an assembly file listing of th
 - Switch to the Debug viewlet.
 - Select `Launch Client+Server` from the drop down.
 - Run the launch config.
-- In the [Extension Development Host] instance of VSCode, open a folder with a ".gtirb" file in it and click the file to open it.
+- In the [Extension Development Host] instance of vscode, open a folder with a ".gtirb" file in it and click the file to open it.
 
 ## Installing the pre-built extension
 
-You can install the extension as a .vsix file, and it will appear in VSCode with all your other installed eztensions. Clone the repo use the following command:
+You can install the extension as a .vsix file, and it will appear in vscode with all your other installed extensions. To install, run the following command in this folder:
 - code --install-extension gtirb-vsix-0.0.1.vsix
-And start VSCode. You should now see GTIRB in your list of extensions. The extension will start up automatically whenever you open a file with the ".gtirb" extension. You can uninstall the extension from within the GUI, or with the following command:
+And start vscode. You should now see GTIRB in your list of extensions. The extension will start up automatically whenever you open a file with the ".gtirb" extension. You can uninstall the extension from within the GUI, or with the following command:
 - code --uninstall-extension gtirb-vsix-0.0.1.vsix
 
 
