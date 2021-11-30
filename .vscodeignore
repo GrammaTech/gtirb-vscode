@@ -1,10 +1,18 @@
 .vscode/**
 .vscode-test/**
+gtirb_lsp_server/test/**
 out/test/**
 
 src/**
+__pycache__
 .gitignore
 .yarnrc
+.coveragerc
+.eslintignore
+.flake8
+.gitlab-ci.yml
+.isort.cfg
+.pre-commit-config.yaml
 vsc-extension-quickstart.md
 **/tsconfig.json
 **/.eslintrc.json
