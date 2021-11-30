@@ -6,15 +6,15 @@ import * as path from 'path';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 
-const execShell = (cmd: string) =>
+const execFile = (cmd: string, ...args: string[]) =>
     new Promise<string>((resolve, reject) => {
-        cp.exec(cmd, (err, out) => {
-        if (err) {
-            return reject(err);
-        }
-        return resolve(out);
+        cp.execFile(cmd, args, (err, out) => {
+            if (err) {
+                return reject(err);
+            }
+            return resolve(out);
+        });
     });
-  });
 
 /**
  * If you are not extending some kind of Text Editor, you have to define a Custom Document
@@ -44,27 +44,23 @@ class GtirbDocument extends Disposable implements vscode.CustomDocument {
         const parsedPath = path.parse(this._uri.fsPath);
         const cachePath = path.join(parsedPath.dir, '.vscode.'.concat(parsedPath.base));
 
-        const x64CachePath = path.join(cachePath, 'x64');
-        const x64AsmPath = path.join(x64CachePath, parsedPath.name.concat('.gtasm'));
-
-        const mipsCachePath = path.join(cachePath, 'mips');
-        const mipsAsmPath = path.join(mipsCachePath, parsedPath.name.concat('.gtasm'));
-
-        const armCachePath = path.join(cachePath, 'arm');
-        const armAsmPath = path.join(armCachePath, parsedPath.name.concat('.gtasm'));
+        const isas = ['x64', 'mips', 'arm'];
+        const asms = isas.map(isa =>
+            path.join(cachePath, isa, parsedPath.name.concat('.gtasm'))
+        );
 
         // Wait for text document
-        if (fs.existsSync(x64AsmPath)) {
-            try {
-                vscode.window.showTextDocument(vscode.Uri.file(x64AsmPath));
-            } catch {
-                vscode.window.showInformationMessage(`${x64AsmPath} does not exist`);
-            }
-        } else if (fs.existsSync(mipsAsmPath)) {
-            vscode.window.showTextDocument(vscode.Uri.file(mipsAsmPath));
-        } else if (fs.existsSync(armAsmPath)) {
-            vscode.window.showTextDocument(vscode.Uri.file(armAsmPath));
+        const asmPath = asms.find(path => {
+            console.log(`trying ${path}`);
+            return fs.existsSync(path);
+        });
+
+        if (asmPath) {
+            vscode.window.showTextDocument(vscode.Uri.file(asmPath));
+        } else {
+            vscode.window.showErrorMessage(`Could not find gtirb disassembly in: ${asms.join(', ')}`);
         }
+
         this._onDidDispose.fire();
         super.dispose();
     }
@@ -76,10 +72,10 @@ class GtirbDocument extends Disposable implements vscode.CustomDocument {
  */
 export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<GtirbDocument> {
 
-    public static register(context: vscode.ExtensionContext): vscode.Disposable {
+    public static register(context: vscode.ExtensionContext, pythonPath: string): vscode.Disposable {
         return vscode.window.registerCustomEditorProvider(
             GtirbEditorProvider.viewType,
-            new GtirbEditorProvider(context),
+            new GtirbEditorProvider(context, pythonPath),
             {
                 webviewOptions: {
                     retainContextWhenHidden: true,
@@ -92,7 +88,7 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
     private static readonly viewType = 'gtirb-loader.gtirb';
     private myPath : string;
 
-    constructor(private readonly context: vscode.ExtensionContext) {
+    constructor(private readonly context: vscode.ExtensionContext, private readonly pythonPath: string) {
         this.myPath = context.extensionPath;
     }
 
@@ -121,7 +117,7 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
             || (fs.existsSync(armJsonFile.fsPath) && fs.existsSync(armJsonFile.fsPath))) {
             console.log("reusing existing assembly and index files.");
         } else {
-            await execShell(`${this.myPath}/indexer.sh ${path}`);
+            await execFile(this.pythonPath, `${this.myPath}/indexer.py`, path);
         }
         return document;
     }

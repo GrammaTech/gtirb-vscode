@@ -73,17 +73,16 @@ export function activate(context: vscode.ExtensionContext) {
     const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
     const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
 
+    const cwd = path.join(__dirname, "..");
+    const pythonPath = vscode.workspace
+        .getConfiguration("python")
+        .get<string>("pythonPath");
+
+    if (!pythonPath) {
+        throw new Error("`python.pythonPath` is not set");
+    }
+
     if (hostAddr === 'stdio') {
-
-        const cwd = path.join(__dirname, "..");
-        const pythonPath = vscode.workspace
-            .getConfiguration("python")
-            .get<string>("pythonPath");
-
-        if (!pythonPath) {
-            throw new Error("`python.pythonPath` is not set");
-        }
-
         client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], cwd);
     } else {
         client = startLangServerTCP(port!, hostAddr!);
@@ -91,7 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register our custom editor providers
     context.subscriptions.push(client.start());
-    context.subscriptions.push(GtirbEditorProvider.register(context));
+    context.subscriptions.push(GtirbEditorProvider.register(context, pythonPath));
 }
 
 
