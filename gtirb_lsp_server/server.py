@@ -582,7 +582,7 @@ def offset_indexed_aux_data(ir: gtirb) -> List[str]:
     for (name, value) in ir.modules[0].aux_data.items():
         if not isinstance(value.data, dict):
             continue
-        if not isinstance(list(value.data.keys())[0], gtirb.Offset):
+        if not value.data or not isinstance(list(value.data.keys())[0], gtirb.Offset):
             continue
         results += [name]
     return results
