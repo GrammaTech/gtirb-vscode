@@ -69,14 +69,47 @@ function startLangServer(
 }
 
 
-export function activate(context: vscode.ExtensionContext) {
+const FALLBACK_PYTHON = 'python';
+
+/**
+ * Derive python path from Python extension API
+ * https://github.com/microsoft/vscode-python/wiki/AB-Experiments#pythondeprecatepythonpath
+ * https://github.com/vscode-restructuredtext/vscode-restructuredtext/pull/224/files
+ */
+async function getPythonPath(): Promise<string> {
+    let pythonPath;
+    try {
+        const extension = vscode.extensions.getExtension("ms-python.python");
+        if (extension) {
+            const usingNewInterpreterStorage = extension.packageJSON?.featureFlags?.usingNewInterpreterStorage;
+            if (usingNewInterpreterStorage) {
+                if (!extension.isActive) {
+                    await extension.activate();
+                }
+                pythonPath = extension.exports.settings.getExecutionDetails().execCommand[0];
+            }
+        }
+    } catch (error) {
+        console.error('Error obtaining Python extension python path', error);
+    }
+    if (!pythonPath) {
+        pythonPath = vscode.workspace.getConfiguration("python").get<string>("defaultInterpreterPath");
+    }
+    if (!pythonPath) {
+        pythonPath = vscode.workspace.getConfiguration("python").get<string>("pythonPath");
+    }
+    if (!pythonPath) {
+        pythonPath = FALLBACK_PYTHON;
+    }
+    return pythonPath;
+}
+
+export async function activate(context: vscode.ExtensionContext) {
     const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
     const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
 
     const cwd = path.join(__dirname, "..");
-    const pythonPath = vscode.workspace
-        .getConfiguration("python")
-        .get<string>("pythonPath");
+    const pythonPath = await getPythonPath();
 
     if (!pythonPath) {
         throw new Error("`python.pythonPath` is not set");
