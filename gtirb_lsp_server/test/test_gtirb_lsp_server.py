@@ -18,6 +18,7 @@ from gtirb_lsp_server.server import (
     offset_to_successors,
     offsets_at_references,
     preceding_function_line,
+    symbol_for_name,
     symbolic_references,
 )
 
@@ -35,7 +36,8 @@ class InitialIndexTestDriver(unittest.TestCase):
         self.gtirb_path = DATA_DIR / "leafnode.gtirb"
         self.gtirb = gtirb.IR.load_protobuf(self.gtirb_path)
         self.asm_path = DATA_DIR / "leafnode.gtasm"
-        self.asm = slurp(self.asm_path)
+        self.asmtext = slurp(self.asm_path)
+        self.asm = self.asmtext.splitlines()
 
     def test_get_line_offsets(self):
         line_offsets = get_line_offset(self.gtirb, self.asm)
@@ -63,7 +65,7 @@ class InitialIndexTestDriver(unittest.TestCase):
         )
         counter = 0
         found = False
-        for i in range(len(self.asm.splitlines())):
+        for i in range(len(self.asm)):
             try:
                 off = offset_by_line[i]
             except Exception:
@@ -143,3 +145,30 @@ class InitialIndexTestDriver(unittest.TestCase):
         self.assertTrue(len(offsets) > 0)
         self.assertTrue(isinstance(offsets[0][0], gtirb.Offset))
         self.assertTrue(isinstance(offsets[0][1], gtirb.SymbolicExpression))
+
+    def test_get_references_for_symbol(self):
+        symbol_name = ".L_4049d9"
+        expected_definition_line = 1321
+        expected_references = [1318, 1367]
+        sym = symbol_for_name(self.gtirb, symbol_name)
+        self.assertTrue(sym is not None)
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
+            self.gtirb, get_line_offset(self.gtirb, self.asm)
+        )
+        referent_line = first_line_for_uuid(offset_by_line, sym.referent.uuid)
+        self.assertTrue(referent_line == expected_definition_line)
+        offset = offset_by_line[referent_line]
+        self.assertTrue(offset is not None)
+        references = list(symbolic_references(self.gtirb, offset.element_id.references))
+        offsets_and_symbolic_expressions = offsets_at_references(self.gtirb, references)
+        reference_lines = list(
+            filter(
+                lambda it: isinstance(it, int),
+                map(
+                    lambda off_and_se: line_by_offset[off_and_se[0]],
+                    offsets_and_symbolic_expressions,
+                ),
+            )
+        )
+        reference_lines.sort()
+        self.assertTrue(reference_lines == expected_references)

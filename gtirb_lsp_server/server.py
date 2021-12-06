@@ -8,7 +8,7 @@ import uuid
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 import gtirb
-from pygls.lsp.methods import (  # TEXT_DOCUMENT_DID_SAVE,
+from pygls.lsp.methods import (
     DEFINITION,
     HOVER,
     REFERENCES,
@@ -17,10 +17,9 @@ from pygls.lsp.methods import (  # TEXT_DOCUMENT_DID_SAVE,
     TEXT_DOCUMENT_DID_OPEN,
 )
 
-# from pygls.protocol import LanguageServerProtocol
 from pygls.server import LanguageServer
 
-from pygls.lsp.types import (  # DidSaveTextDocumentParams,; LocationLink,; ReferenceContext,
+from pygls.lsp.types import (
     DefinitionOptions,
     DefinitionParams,
     DidChangeTextDocumentParams,
@@ -49,8 +48,20 @@ DEFAULT_STDIO_FLAG = True
 StringList = List[str]
 LocationList = List[Location]
 
+#
+# Manage the index information for currently opened documents:
+# These are dicts whose key is a text document URI, added to
+# when that document is opened and removed when it is closed.
+#
+# GTIRB IR of currently opened documents
 current_gtirbs = {}
+
+#
+# Indexes, a tuple. [0] is a map from line to Offset, [1] is the inverse.
 current_indexes = {}
+
+#
+# The text in the documents
 current_documents = {}
 
 
@@ -214,20 +225,19 @@ def isolate_token(line: str, pos: int) -> str:
     return ""
 
 
-def preceding_function_line(asm: str, name: str, line: int) -> Optional[int]:
+def preceding_function_line(current_lines: StringList, name: str, line: int) -> Optional[int]:
     logger.debug(f"preceding_function_line(asm, '{name}', {line})")
     name_re = re.compile(name + ":")
     addr_re = re.compile("# EA: (0x[0-9a-f]+)$")
-    lines = asm.splitlines()
     for i in range(1, line):
-        if name_re.search(lines[line - i]):
+        if name_re.search(current_lines[line - i]):
             return line - i
-        elif addr_re.search(lines[line - i]):
+        elif addr_re.search(current_lines[line - i]):
             return None
     return None
 
 
-def get_line_offset(ir: gtirb, text: str) -> List[Tuple[int, Tuple[int, int]]]:
+def get_line_offset(ir: gtirb, current_lines: StringList) -> List[Tuple[int, Tuple[int, int]]]:
     """Process ASM listing string TEXT with respect to GTIRB IR to return a
     list of line numbers and associated offsets."""
 
@@ -240,7 +250,7 @@ def get_line_offset(ir: gtirb, text: str) -> List[Tuple[int, Tuple[int, int]]]:
                 lambda x: x[0],
                 map(
                     lambda line: ((addr_re.search(line[1]) or [None, None])[1], line[0]),
-                    enumerate(text.splitlines()),
+                    enumerate(current_lines),
                 ),
             ),
         )
@@ -327,7 +337,12 @@ def ensure_index(text_document):
 
     if line_offsets is None:
         logger.info(f"Populating (line-number,offset(UUID,int)) map to JSON file: {jsonfile}")
-        line_offsets = get_line_offset(ir, text_document.text)
+        # this document should already be in current_documents, use it if possible
+        if text_document.uri in current_documents:
+            current_lines = current_documents[text_document.uri]
+        else:
+            current_lines = text_document.text.splitlines()
+        line_offsets = get_line_offset(ir, current_lines)
 
         # Store the resulting map into a JSON file.
         logger.debug(f"line_offsets => {line_offsets}")
@@ -356,8 +371,7 @@ async def did_open(ls, params: DidOpenTextDocumentParams):
 
     # This is where to check the extension
     if ext == ".gtasm":
-        # Maybe make this a store of split lines so only needs to be split once
-        current_documents[params.text_document.uri] = params.text_document
+        current_documents[params.text_document.uri] = params.text_document.text.splitlines()
         logger.info("Added to document list")
         ensure_index(params.text_document)
         logger.info("finished indexing")
@@ -378,23 +392,25 @@ def did_close(ls, params: DidCloseTextDocumentParams):
 def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
     """Text document definition request."""
     logger.info(f"Definition request received uri: {params.text_document.uri}")
-    current_line: str = ""
-    current_text: str = ""
-    current_token: str = ""
     current_lines: StringList = []
-    if params.text_document.uri in current_documents:
-        text_document = current_documents[params.text_document.uri]
-        current_text = text_document.text
-        current_lines = current_text.splitlines()
-        current_line = current_lines[params.position.line]
-        current_token = isolate_token(current_line, params.position.character)
+    current_token: str
+    #
+    # Make sure the document is current
+    if (
+        params.text_document.uri in current_documents
+        and params.text_document.uri in current_indexes
+        and params.text_document.uri in current_gtirbs
+    ):
+        current_lines = current_documents[params.text_document.uri]
+        current_token = isolate_token(
+            current_lines[params.position.line], params.position.character
+        )
         if current_token is None or len(current_token) == 0:
             ls.show_message(
                 f" no token found for {params.position.line}:{params.position.character}"
             )
             return None
     else:
-        # Load the cached index here if it exists?
         ls.show_message(
             f" document {params.text_document.uri} is not in the current document store."
         )
@@ -418,7 +434,7 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
         return None
     logger.debug(f"line found: {line}")
 
-    line = preceding_function_line(current_text, current_token, line)
+    line = preceding_function_line(current_lines, current_token, line)
     definition_line: str = current_lines[line]
 
     return Location(
@@ -432,25 +448,33 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
     )
 
 
-# remove async ? test code does not have.
-#    async def get_references(ls, params: ReferenceParams):
-# returns Optional[List[Location]]
 @server.feature(REFERENCES, ReferenceOptions())
 def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
     """Text document references request."""
     logger.info(f"References request received uri: {params.text_document.uri}")
-    # put decl here so they func-global, will need them later
-    # "current_text" is the text of the whole document
-    current_text: str = ""
     current_lines: StringList = []
+    current_token: str
     locations: LocationList = []
-    if params.text_document.uri in current_documents:
-        text_document = current_documents[params.text_document.uri]
-        current_text = text_document.text
-        current_lines = current_text.splitlines()
+    #
+    # Make sure the document is current
+    if (
+        params.text_document.uri in current_documents
+        and params.text_document.uri in current_indexes
+        and params.text_document.uri in current_gtirbs
+    ):
+        current_lines = current_documents[params.text_document.uri]
+        current_token = isolate_token(
+            current_lines[params.position.line], params.position.character
+        )
+        if current_token is None or len(current_token) == 0:
+            ls.show_message(
+                f" no token found for {params.position.line}:{params.position.character}"
+            )
+            return None
     else:
-        # Check if cache exists ono file system?
-        ls.show_message(f" document {params.text_document.uri} is not in the current store.")
+        ls.show_message(
+            f" document {params.text_document.uri} is not in the store of current documents."
+        )
         return None
 
     ir = current_gtirbs[params.text_document.uri]
@@ -459,9 +483,19 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
         return None
     logger.debug("ir found")
 
-    offset = line_to_offset(params.text_document.uri, params.position.line)
+    # If token is a GTIRB symbol, find references to it,
+    # otherwise find references to whatever block the cusor is in
+    symbol = symbol_for_name(ir, current_token)
+    if symbol is None:
+        reference_line = params.position.line
+    else:
+        reference_line = first_line_for_uuid(
+            current_indexes[params.text_document.uri][0], symbol.referent.uuid
+        )
+
+    offset = line_to_offset(params.text_document.uri, reference_line)
     if offset is None:
-        ls.show_message(f" no offset found for line {params.position.line}.")
+        ls.show_message(f" no offset found for line {reference_line}.")
         return None
     logger.debug(f"offset found: {offset}")
 
