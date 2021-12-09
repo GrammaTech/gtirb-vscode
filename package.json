@@ -92,10 +92,10 @@
                     "description": "Port to connect to.",
                     "default": 3036
                 },
-                "gtirb.exampleConfiguration": {
-                    "scope": "resource",
-                    "type": "string",
-                    "default": "Example message."
+                "gtirb.rewritable": {
+                    "type": "boolean",
+                    "description": "GTIRB files may be edited",
+                    "default": true
                 }
             }
         },
