@@ -5,3 +5,4 @@ node_modules
 *.vsix
 gtirb_lsp_server/__pycache__/
 nbproject/
+.coverage
