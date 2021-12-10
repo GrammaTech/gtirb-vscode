@@ -49,6 +49,7 @@ def index_gtirb(filepath):
             if not asm_file.is_file():
                 print(f"Failed to create ASM FILE {asm_file}")
                 return False
+        return True
 
     else:
         print(f"Bad ISA: {isa}.")
