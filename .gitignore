@@ -6,3 +6,4 @@ node_modules
 gtirb_lsp_server/__pycache__/
 nbproject/
 .coverage
+__pycache__/
