@@ -211,6 +211,20 @@ def first_line_for_blocks(offset_by_line: Dict[int, gtirb.Offset], blocks: Set[g
     return first_line
 
 
+def block_lines(offset_by_line: Dict[int, gtirb.Offset], block: gtirb.ByteBlock) -> List[int]:
+    logger.debug(f"block_lines(index[{len(list(offset_by_line.keys()))}], {block})")
+    return list(
+        sorted(
+            map(
+                lambda pair: pair[0],
+                filter(
+                    lambda pair: pair[1].element_id.uuid == block.uuid, list(offset_by_line.items())
+                ),
+            )
+        )
+    )
+
+
 def symbol_for_name(ir: gtirb, name: str) -> Optional[gtirb.Symbol]:
     symbols = list(filter(lambda s: s.name == name, ir.modules[0].symbols))
     if symbols:
@@ -403,43 +417,50 @@ async def get_line_from_address(ls, *args):
 
 
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
-def did_change(ls, params: DidChangeTextDocumentParams):
+def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams):
     """Text document did change notification."""
-    logger.debug(f"Text Document Did Change notification, uri: {params.text_document.uri}")
-    if not params.text_document.uri in modified_offsets:
-        modified_offsets[params.text_document.uri] = []
+    uri = params.text_document.uri
+    logger.info(f"Text Document Did Change notification, {params.text_document.uri}")
+    logger.debug(f"Changes: {list(map(lambda e: e.range.start.line, params.content_changes))}")
+    if not uri in modified_offsets:
+        modified_offsets[uri] = []
 
-    modified_offsets[params.text_document.uri].append(
-        line_to_offset(params.text_document.uri, params.position.line)
+    change_offsets = list(
+        filter(None, map(lambda e: line_to_offset(uri, e.range.start.line), params.content_changes))
     )
+
+    logger.debug(f"found {len(change_offsets)} offsets for {len(params.content_changes)} changes")
+    modified_offsets[params.text_document.uri] += change_offsets
 
     # Could consider updating the spaces in time to ensure the column
     # offset of the address stays consistent.
 
 
 @server.feature(TEXT_DOCUMENT_DID_SAVE)
-async def did_save(ls, params: DidSaveTextDocumentParams):
+async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParams):
     """Text document did save notification."""
     uri = params.text_document.uri
     logger.info(f"Text Document Did Save notification, uri: {uri}")
+    workspace = server.workspace
+    document = workspace.get_document(uri)
+    logger.debug(f"document {document} with {len(document.lines)} lines")
 
     if (not uri in modified_offsets) or len(modified_offsets[uri]) == 0:
-        ls.show_message(f"no pending modifications to {uri}")
+        server.show_message(f"no pending modifications to {uri}")
         return None
+    mod_offsets = list(filter(None, modified_offsets[uri]))
 
     if not uri in current_gtirbs:
-        ls.show_message(f"no GTIRB found for {uri}")
+        server.show_message(f"no GTIRB found for {uri}")
         return None
-
-    current_documents[params.text_document.uri] = params.text_document.text.splitlines()
-    current_lines = current_documents[params.text_document.uri]
-
     ir = current_gtirbs[uri]
-    modified_blocks = offset_to_blocks(ir, modified_offsets[uri])
-    ls.show_message(f"Applying {len(modified_blocks)} modifications to {uri}")
+
+    modified_blocks = set(map(lambda o: o.element_id, mod_offsets))
+    logger.debug(f"applying {len(modified_blocks)} modifications to {uri}")
+
     functions = gtirb_functions.Function.build_functions(ir.modules[0])
     blocks_to_functions = {block: func for func in functions for block in func.get_all_blocks()}
-    ctx = RewritingContext(ir.modules[0], functions)
+    ctx = gtirb_rewriting.RewritingContext(ir.modules[0], functions)
 
     def literal_patch(asm: str) -> gtirb_rewriting.Patch:
         """
@@ -454,20 +475,26 @@ async def did_save(ls, params: DidSaveTextDocumentParams):
         return gtirb_rewriting.Patch.from_function(patch)
 
     for block in modified_blocks:
+        logger.debug(f"block {block}")
         asm = "\n".join(
             list(
                 map(
-                    lambda l: current_lines[l],
-                    sorted(set(map(lambda o: offset_to_line(o), block_offsets(ir, block)))),
+                    lambda l: document.lines[l].split("#")[0].rstrip(),
+                    block_lines(current_indexes[uri][0], block),
                 )
             )
         )
+        logger.debug(f"asm {asm}")
         if asm == "":
-            ls.show_message(f"can not rewrite block {block} to have empty assembly text.")
+            server.show_message(f"can not rewrite block {block} to have empty assembly text.")
             return None
 
         ctx.replace_at(blocks_to_functions[block], block, 0, block.size, literal_patch(asm))
-    ctx.apply()
+
+    try:
+        ctx.apply()
+    except Exception as e:
+        server.show_message(f"Assembly error: {e}")
 
     # TODO:
     # - Update the text with gtirb-pprinter
@@ -478,7 +505,7 @@ async def did_save(ls, params: DidSaveTextDocumentParams):
 
 
 @server.feature(TEXT_DOCUMENT_DID_OPEN)
-async def did_open(ls, params: DidOpenTextDocumentParams):
+async def did_open(ls: GtirbLanguageServer, params: DidOpenTextDocumentParams):
     """Text document did open notification."""
     logger.info(f"Text Document Did Open notification, uri: {params.text_document.uri}")
     splitpath = os.path.splitext(params.text_document.uri)
@@ -493,7 +520,7 @@ async def did_open(ls, params: DidOpenTextDocumentParams):
 
 
 @server.feature(TEXT_DOCUMENT_DID_CLOSE)
-def did_close(ls, params: DidCloseTextDocumentParams):
+def did_close(ls: GtirbLanguageServer, params: DidCloseTextDocumentParams):
     """Text document did close notification."""
     logger.info(f"Text Document Did Close notification, uri: {params.text_document.uri}")
     if params.text_document.uri in current_documents:
@@ -504,7 +531,7 @@ def did_close(ls, params: DidCloseTextDocumentParams):
 
 
 @server.feature(DEFINITION, DefinitionOptions())
-def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
+def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optional[Location]:
     """Text document definition request."""
     logger.info(f"Definition request received uri: {params.text_document.uri}")
     current_lines: StringList = []
@@ -564,7 +591,7 @@ def get_definition(ls, params: DefinitionParams) -> Optional[Location]:
 
 
 @server.feature(REFERENCES, ReferenceOptions())
-def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
+def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional[List[Location]]:
     """Text document references request."""
     logger.info(f"References request received uri: {params.text_document.uri}")
     current_lines: StringList = []
@@ -676,7 +703,7 @@ def get_references(ls, params: ReferenceParams) -> Optional[List[Location]]:
 
 
 @server.feature(HOVER, HoverOptions())
-def get_hover(ls, params: HoverParams) -> Optional[Hover]:
+def get_hover(ls: GtirbLanguageServer, params: HoverParams) -> Optional[Hover]:
     logger.info(f"Hover request received uri: {params.text_document.uri}")
     offset = line_to_offset(params.text_document.uri, params.position.line)
     if offset:
