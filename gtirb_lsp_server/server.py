@@ -8,6 +8,12 @@ import uuid
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 import gtirb
+import gtirb_functions
+import gtirb_rewriting
+import mcasm
+
+X86Syntax = mcasm.X86Syntax
+
 from pygls.lsp.methods import (
     DEFINITION,
     HOVER,
@@ -15,6 +21,7 @@ from pygls.lsp.methods import (
     TEXT_DOCUMENT_DID_CHANGE,
     TEXT_DOCUMENT_DID_CLOSE,
     TEXT_DOCUMENT_DID_OPEN,
+    TEXT_DOCUMENT_DID_SAVE,
 )
 
 from pygls.server import LanguageServer
@@ -23,6 +30,7 @@ from pygls.lsp.types import (
     DefinitionOptions,
     DefinitionParams,
     DidChangeTextDocumentParams,
+    DidSaveTextDocumentParams,
     DidCloseTextDocumentParams,
     DidOpenTextDocumentParams,
     Hover,
@@ -36,7 +44,6 @@ from pygls.lsp.types import (
     ReferenceOptions,
     ReferenceParams,
 )
-
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
@@ -61,8 +68,12 @@ current_gtirbs = {}
 current_indexes = {}
 
 #
-# The text in the documents
+# The text in the documents.
 current_documents = {}
+
+#
+# Offsets with pending edits.
+modified_offsets = {}
 
 
 def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
@@ -394,8 +405,76 @@ async def get_line_from_address(ls, *args):
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
 def did_change(ls, params: DidChangeTextDocumentParams):
     """Text document did change notification."""
-    logger.info(f"Text Document Did Change notification, uri: {params.text_document.uri}")
-    # extraneous # return None
+    logger.debug(f"Text Document Did Change notification, uri: {params.text_document.uri}")
+    if not params.text_document.uri in modified_offsets:
+        modified_offsets[params.text_document.uri] = []
+
+    modified_offsets[params.text_document.uri].append(
+        line_to_offset(params.text_document.uri, params.position.line)
+    )
+
+    # Could consider updating the spaces in time to ensure the column
+    # offset of the address stays consistent.
+
+
+@server.feature(TEXT_DOCUMENT_DID_SAVE)
+async def did_save(ls, params: DidSaveTextDocumentParams):
+    """Text document did save notification."""
+    uri = params.text_document.uri
+    logger.info(f"Text Document Did Save notification, uri: {uri}")
+
+    if (not uri in modified_offsets) or len(modified_offsets[uri]) == 0:
+        ls.show_message(f"no pending modifications to {uri}")
+        return None
+
+    if not uri in current_gtirbs:
+        ls.show_message(f"no GTIRB found for {uri}")
+        return None
+
+    current_documents[params.text_document.uri] = params.text_document.text.splitlines()
+    current_lines = current_documents[params.text_document.uri]
+
+    ir = current_gtirbs[uri]
+    modified_blocks = offset_to_blocks(ir, modified_offsets[uri])
+    ls.show_message(f"Applying {len(modified_blocks)} modifications to {uri}")
+    functions = gtirb_functions.Function.build_functions(ir.modules[0])
+    blocks_to_functions = {block: func for func in functions for block in func.get_all_blocks()}
+    ctx = RewritingContext(ir.modules[0], functions)
+
+    def literal_patch(asm: str) -> gtirb_rewriting.Patch:
+        """
+        Creates a patch from a literal string. The patch will have an empty
+        constraints object.
+        """
+
+        @gtirb_rewriting.patch_constraints(x86_syntax=X86Syntax.INTEL)
+        def patch(ctx):
+            return asm
+
+        return gtirb_rewriting.Patch.from_function(patch)
+
+    for block in modified_blocks:
+        asm = "\n".join(
+            list(
+                map(
+                    lambda l: current_lines[l],
+                    sorted(set(map(lambda o: offset_to_line(o), block_offsets(ir, block)))),
+                )
+            )
+        )
+        if asm == "":
+            ls.show_message(f"can not rewrite block {block} to have empty assembly text.")
+            return None
+
+        ctx.replace_at(blocks_to_functions[block], block, 0, block.size, literal_patch(asm))
+    ctx.apply()
+
+    # TODO:
+    # - Update the text with gtirb-pprinter
+    #   - Return updated text
+    #   - Distinguish between modified comments and modified assembly
+    #   - Improved warnings when trying to delete blocks
+    #   - Retain comments (in a new AuxData in the GTIRB)
 
 
 @server.feature(TEXT_DOCUMENT_DID_OPEN)
