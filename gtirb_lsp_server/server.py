@@ -75,7 +75,6 @@ current_documents = {}
 # Offsets with pending edits.
 modified_offsets = {}
 
-
 def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
     """Lookup LINE in the current indexes to return the associated OFFSET"""
     logger.debug(f"line_to_offset({document_uri}, {line})")
@@ -211,18 +210,10 @@ def first_line_for_blocks(offset_by_line: Dict[int, gtirb.Offset], blocks: Set[g
     return first_line
 
 
-def block_lines(offset_by_line: Dict[int, gtirb.Offset], block: gtirb.ByteBlock) -> List[int]:
-    logger.debug(f"block_lines(index[{len(list(offset_by_line.keys()))}], {block})")
-    return list(
-        sorted(
-            map(
-                lambda pair: pair[0],
-                filter(
-                    lambda pair: pair[1].element_id.uuid == block.uuid, list(offset_by_line.items())
-                ),
-            )
-        )
-    )
+def block_lines(line_by_offset: Dict[gtirb.Offset, int], block: gtirb.ByteBlock) -> List[int]:
+    logger.debug(f"block_lines(index[{len(list(line_by_offset.keys()))}], {block})")
+    return list(sorted(filter(None, map(lambda i: line_by_offset.get(gtirb.Offset(element_id=block, displacement=i)),
+                                        range(block.size)))))
 
 
 def symbol_for_name(ir: gtirb, name: str) -> Optional[gtirb.Symbol]:
@@ -420,20 +411,54 @@ async def get_line_from_address(ls, *args):
 def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams):
     """Text document did change notification."""
     uri = params.text_document.uri
+    document = server.workspace.get_document(uri)
     logger.info(f"Text Document Did Change notification, {params.text_document.uri}")
-    logger.debug(f"Changes: {list(map(lambda e: e.range.start.line, params.content_changes))}")
+    logger.debug(f"Changes: {params.content_changes}")
     if not uri in modified_offsets:
         modified_offsets[uri] = []
 
-    change_offsets = list(
-        filter(None, map(lambda e: line_to_offset(uri, e.range.start.line), params.content_changes))
-    )
+    old_lines = current_documents[uri]
 
-    logger.debug(f"found {len(change_offsets)} offsets for {len(params.content_changes)} changes")
+    change_offsets : List[gtirb.Offset] = []
+    for change in params.content_changes:
+        new_lines = change.text.splitlines()
+        old_count = (change.range.end + 1) - change.range.start
+
+        # If the change is the same size as the previous then just proceed.
+        if old_count == len(new_lines):
+            continue
+
+        # Update Lines->Offsets and Offsets->Lines.
+        (offset_by_line, line_by_offset) = current_indexes[uri]
+        growth = len(new_lines) - old_count
+        new_offset_by_line = {}
+        for line, offset in sorted(offset_by_line.items()):
+            # Before the start of the change.
+            if line < change.range.start.line:
+                new_offset_by_line[line] = offset
+                continue
+            # After the end of the change.
+            if line > change.range.end.line:
+                new_offset_by_line[line + growth] = offset
+                line_by_offset[offset] = line + growth
+                continue
+            # Offset at the start of the change holds the new text
+            if
+                new_offset_by_line[line + growth] = offset
+
+
+    current_indexes[uri] = (new_offset_by_line, line_by_offset)
+
+    logger.debug(f"found {len(change_offsets)} changed offsets for {len(params.content_changes)} changes")
     modified_offsets[params.text_document.uri] += change_offsets
+
+    # TODO: Update the lines<->offset map as the lines change.
+    # - get the affected lines from the range
+    # - update all lines in the line<->offset map appropriately
 
     # Could consider updating the spaces in time to ensure the column
     # offset of the address stays consistent.
+
 
 
 @server.feature(TEXT_DOCUMENT_DID_SAVE)
@@ -445,7 +470,8 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
     document = workspace.get_document(uri)
     logger.debug(f"document {document} with {len(document.lines)} lines")
 
-    if (not uri in modified_offsets) or len(modified_offsets[uri]) == 0:
+    if ((not uri in modified_offsets) or
+        len(modified_offsets[uri]) == 0):
         server.show_message(f"no pending modifications to {uri}")
         return None
     mod_offsets = list(filter(None, modified_offsets[uri]))
@@ -459,7 +485,11 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
     logger.debug(f"applying {len(modified_blocks)} modifications to {uri}")
 
     functions = gtirb_functions.Function.build_functions(ir.modules[0])
-    blocks_to_functions = {block: func for func in functions for block in func.get_all_blocks()}
+    blocks_to_functions = {
+        block: func
+        for func in functions
+        for block in func.get_all_blocks()
+    }
     ctx = gtirb_rewriting.RewritingContext(ir.modules[0], functions)
 
     def literal_patch(asm: str) -> gtirb_rewriting.Patch:
@@ -467,29 +497,25 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
         Creates a patch from a literal string. The patch will have an empty
         constraints object.
         """
-
-        @gtirb_rewriting.patch_constraints(x86_syntax=X86Syntax.INTEL)
+        @gtirb_rewriting.patch_constraints(x86_syntax = X86Syntax.INTEL)
         def patch(ctx):
             return asm
-
         return gtirb_rewriting.Patch.from_function(patch)
 
     for block in modified_blocks:
         logger.debug(f"block {block}")
-        asm = "\n".join(
-            list(
-                map(
-                    lambda l: document.lines[l].split("#")[0].rstrip(),
-                    block_lines(current_indexes[uri][0], block),
-                )
-            )
-        )
+        asm = "\n".join(list(map(lambda l: document.lines[l].split("#")[0].rstrip(),
+                                 block_lines(current_indexes[uri][1], block))))
         logger.debug(f"asm {asm}")
         if asm == "":
             server.show_message(f"can not rewrite block {block} to have empty assembly text.")
             return None
 
-        ctx.replace_at(blocks_to_functions[block], block, 0, block.size, literal_patch(asm))
+        ctx.replace_at(blocks_to_functions[block],
+                       block,
+                       0,
+                       block.size,
+                       literal_patch(asm))
 
     try:
         ctx.apply()

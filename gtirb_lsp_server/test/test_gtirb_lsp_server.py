@@ -59,7 +59,7 @@ class InitialIndexTestDriver(unittest.TestCase):
             ),
         )
 
-    def test_line_offsets_to_maps(self):
+     def test_line_offsets_to_maps(self):
         (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
         )
