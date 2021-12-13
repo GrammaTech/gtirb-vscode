@@ -45,9 +45,24 @@ from pygls.lsp.types import (
     ReferenceOptions,
     ReferenceParams,
 )
+import functools
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
+
+# From https://towardsdatascience.com/a-simple-way-to-trace-code-in-python-a15a25cbbf51
+def tracefunc(func):
+    """Decorates a function to show its trace."""
+
+    @functools.wraps(func)
+    def tracefunc_closure(*args, **kwargs):
+        """The closure."""
+        result = func(*args, **kwargs)
+        logger.debug(f"{func.__name__}(args={args}, kwargs={kwargs}) => {result}")
+        return result
+
+    return tracefunc_closure
+
 
 DEFAULT_PORT = 3036
 DEFAULT_TCP_FLAG = False
@@ -455,7 +470,9 @@ def apply_changes_to_indexes(
         for line in range(start, end):
             for offset in offsets_by_line[line]:
                 affected_offsets.add(offset)
-        collected_affected_offsets.update(affected_offsets)
+        collected_affected_offsets.add(
+            list(sorted(affected_offsets))[0]
+        )  # Only first offset saved for later updates.
         affected_lines = list(range(start, start + new_count))
 
         # Update Lines->Offsets and Offsets->Lines.
