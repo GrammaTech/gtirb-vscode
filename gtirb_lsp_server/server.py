@@ -74,12 +74,31 @@ def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
         return None
 
 
+# Symbolic references may appear at addresses not represented by offsets in the
+# line to offset map, so a limited interval search is allowed to find an Offset
+# mapping to a line in the document.
+# This sets the size of that interval and may need to be adjusted for optimal results
+DISPLACEMENT_INTERVAL = 5
+
+
+def decr_displacement(document_uri: str, offset: gtirb.Offset) -> gtirb.Offset:
+    n = min(DISPLACEMENT_INTERVAL, offset.displacement)
+    for i in range(n, 0, -1):
+        lower_offset = gtirb.Offset(offset.element_id, offset.displacement - i)
+        if lower_offset in current_indexes[document_uri][1]:
+            return lower_offset
+    return None
+
+
 def offset_to_line(document_uri: str, offset: Union[gtirb.Offset, str, int]) -> Optional[int]:
     """Lookup OFFSET in the current indexes to return the associated LINE"""
     if isinstance(offset, str):
         uuid.UUID(hex=offset)
     elif isinstance(offset, int):
         uuid.UUID(int=offset)
+    elif isinstance(offset, gtirb.Offset):
+        if offset not in current_indexes[document_uri][1]:
+            offset = decr_displacement(document_uri, offset)
     try:
         return current_indexes[document_uri][1][offset]
     except Exception:
