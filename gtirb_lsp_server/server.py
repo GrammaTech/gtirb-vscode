@@ -430,50 +430,43 @@ async def get_line_from_address(ls, *args):
     return None
 
 
-@server.feature(TEXT_DOCUMENT_DID_CHANGE)
-def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams):
-    """Text document did change notification."""
-    uri = params.text_document.uri
-    document = server.workspace.get_document(uri)
-    logger.info(f"Text Document Did Change notification, {params.text_document.uri}")
-    logger.debug(f"Changes: {params.content_changes}")
-    if not uri in modified_offsets:
-        modified_offsets[uri] = set()
-
+def apply_changes_to_indexes(
+    offsets_by_line: Dict[int, List[gtirb.Offset]],
+    lines_by_offset: Dict[gtirb.Offset, List[int]],
+    changes: List[Tuple[int, int, str]],
+) -> Tuple[Dict[int, List[gtirb.Offset]], Dict[gtirb.Offset, List[int]], Set[gtirb.Offset]]:
     collected_affected_offsets: Set[gtirb.Offset] = set()
-    for change in params.content_changes:
-        new_count = len(change.text.splitlines())
-        old_count = (change.range.end + 1) - change.range.start
+    for start, end, text in changes:
+        new_count = len(text.splitlines())
+        old_count = (end + 1) - start
         growth = new_count - old_count
 
         def update_line(line):
-            if line < change.range.start.line:
+            if line < start:
                 return line
-            if line > change.range.end.line:
+            if line > end:
                 return line + growth
-            if line < (change.range.end.line + growth):
+            if line < (end + growth):
                 return line
             return 0
 
-        (offsets_by_line, lines_by_offset) = current_indexes[uri]
-
         # Affected offsets and lines.
         affected_offsets = set()
-        for line in range(change.range.start.line, change.range.end.line):
+        for line in range(start, end):
             for offset in offsets_by_line[line]:
                 affected_offsets.add(offset)
         collected_affected_offsets.update(affected_offsets)
-        affected_lines = list(range(change.range.start.line, change.range.start.line + new_count))
+        affected_lines = list(range(start, start + new_count))
 
         # Update Lines->Offsets and Offsets->Lines.
         new_offsets_by_line = {}
         for line, offsets in sorted(offsets_by_line.items()):
             # Before the start of the change.
-            if line < change.range.start.line:
+            if line < start:
                 new_offsets_by_line[line] = offsets
                 continue
             # After the end of the change.
-            if line > change.range.end.line:
+            if line > end:
                 new_offsets_by_line[line + growth] = offsets
                 for offset in offsets:
                     lines_by_offset[offset] = list(
@@ -486,7 +479,31 @@ def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams)
             for offset in offsets:
                 lines_by_offset[offsets] = affected_lines
 
-    current_indexes[uri] = (new_offsets_by_line, lines_by_offset)
+    return (new_offsets_by_line, lines_by_offset, collected_affected_offsets)
+
+
+@server.feature(TEXT_DOCUMENT_DID_CHANGE)
+def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams):
+    """Text document did change notification."""
+    uri = params.text_document.uri
+    document = server.workspace.get_document(uri)
+    logger.info(f"Text Document Did Change notification, {params.text_document.uri}")
+    logger.debug(f"Changes: {params.content_changes}")
+    if not uri in modified_offsets:
+        modified_offsets[uri] = set()
+
+    (offsets_by_line, lines_by_offset) = current_indexes[uri]
+
+    (offsets_by_line, lines_by_offset, collected_affected_offsets) = apply_changes_to_indexes(
+        offsets_by_line,
+        lines_by_offset,
+        map(
+            lambda change: (change.range.start.line, change.range.end.line, change.text),
+            params.content_changes,
+        ),
+    )
+
+    current_indexes[uri] = (offsets_by_line, lines_by_offset)
 
     logger.debug(
         f"{len(collected_affected_offsets)} affected offsets for {len(params.content_changes)} edits"

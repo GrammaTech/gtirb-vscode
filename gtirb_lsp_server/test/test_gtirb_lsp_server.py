@@ -60,25 +60,25 @@ class InitialIndexTestDriver(unittest.TestCase):
             ),
         )
 
-    # def test_line_offsets_to_maps(self):
-    #    (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
-    #        self.gtirb, get_line_offset(self.gtirb, self.asm)
-    #    )
-    #    counter = 0
-    #    found = False
-    #    for i in range(len(self.asm)):
-    #        for off in offsets_by_line.get(i) or []:
-    #            counter += 1
-    #            auxdata = offset_to_auxdata(self.gtirb, off)
-    #            if auxdata:
-    #                found = True
-    #                print(f"{i} {off.element_id.uuid.hex} {off.displacement} {auxdata}")
-    #                break
-    #        if found:
-    #            break
-    #    print(f"{counter} line to UUID maps processed")
-    #    self.assertTrue(counter > 0)
-    #    self.assertTrue(found)
+    def test_line_offsets_to_maps(self):
+        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+            self.gtirb, get_line_offset(self.gtirb, self.asm)
+        )
+        counter = 0
+        found = False
+        for i in range(len(self.asm)):
+            if found:
+                break
+            for off in offsets_by_line.get(i) or []:
+                counter += 1
+                auxdata = offset_to_auxdata(self.gtirb, off)
+                if auxdata:
+                    found = True
+                    print(f"{i} {off.element_id.uuid.hex} {off.displacement} {auxdata}")
+                    break
+        print(f"{counter} line to UUID maps processed")
+        self.assertTrue(counter > 0)
+        self.assertTrue(found)
 
     def test_offset_indexed_aux_data(self):
         offset_indexed_names = offset_indexed_aux_data(self.gtirb)
