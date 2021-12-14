@@ -87,7 +87,8 @@ def decr_displacement(document_uri: str, offset: gtirb.Offset) -> gtirb.Offset:
         lower_offset = gtirb.Offset(offset.element_id, offset.displacement - i)
         if lower_offset in current_indexes[document_uri][1]:
             return lower_offset
-    return None
+    # If no matching offset found, return the original offset
+    return offset
 
 
 def offset_to_line(document_uri: str, offset: Union[gtirb.Offset, str, int]) -> Optional[int]:
