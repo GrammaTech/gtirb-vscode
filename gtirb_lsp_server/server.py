@@ -83,16 +83,10 @@ DISPLACEMENT_INTERVAL = 5
 
 def offset_to_line(document_uri: str, offset: Union[gtirb.Offset, str, int]) -> Optional[int]:
     """Lookup OFFSET in the current indexes to return the associated LINE"""
-    if offset not in current_indexes[document_uri][1]:
-        n = min(DISPLACEMENT_INTERVAL, offset.displacement)
-        for i in range(n, 0, -1):
-            lower_offset = gtirb.Offset(offset.element_id, offset.displacement - i)
-            if lower_offset in current_indexes[document_uri][1]:
-                offset = lower_offset
-    try:
-        return current_indexes[document_uri][1].get(offset)
-    except Exception:
-        return None
+    for i in range(offset.displacement, max(0, (offset.displacement - DISPLACEMENT_INTERVAL)), -1):
+        new_offset = gtirb.Offset(offset.element_id, i)
+        if (line := current_indexes[document_uri][1].get(new_offset)) :
+            return line
 
 
 def offset_to_auxdata(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
