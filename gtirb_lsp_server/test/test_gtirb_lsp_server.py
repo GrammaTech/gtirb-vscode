@@ -21,6 +21,7 @@ from gtirb_lsp_server.server import (
     preceding_function_line,
     symbol_for_name,
     symbolic_references,
+    apply_changes_to_indexes,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -174,3 +175,57 @@ class InitialIndexTestDriver(unittest.TestCase):
         )
         reference_lines.sort()
         self.assertTrue(reference_lines == expected_references)
+
+    def test_apply_changes_to_indexes_same_size(self):
+        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+            self.gtirb, get_line_offset(self.gtirb, self.asm)
+        )
+        target_start_pair = list(offsets_by_line.items())[
+            100
+        ]  # Randomly chosen range in the program.
+        target_end_pair = list(offsets_by_line.items())[
+            104
+        ]  # Randomly chosen range in the program.
+        new_text = "\n".join(
+            ["Line of new text"] * ((target_end_pair[0] + 1) - target_start_pair[0])
+        )
+        (offsets_by_line, lines_by_offset, collected_affected_offsets) = apply_changes_to_indexes(
+            offsets_by_line, lines_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
+        )
+        self.assertTrue(len(collected_affected_offsets) == 1)
+
+    def test_apply_changes_to_indexes_smaller_replacement(self):
+        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+            self.gtirb, get_line_offset(self.gtirb, self.asm)
+        )
+        target_start_pair = list(offsets_by_line.items())[
+            100
+        ]  # Randomly chosen range in the program.
+        target_end_pair = list(offsets_by_line.items())[
+            104
+        ]  # Randomly chosen range in the program.
+        new_text = "\n".join(
+            ["Line of new text"] * (((target_end_pair[0] + 1) - target_start_pair[0]) - 1)
+        )
+        (offsets_by_line, lines_by_offset, collected_affected_offsets) = apply_changes_to_indexes(
+            offsets_by_line, lines_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
+        )
+        self.assertTrue(len(collected_affected_offsets) == 1)
+
+    def test_apply_changes_to_indexes_larger_replacement(self):
+        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+            self.gtirb, get_line_offset(self.gtirb, self.asm)
+        )
+        target_start_pair = list(offsets_by_line.items())[
+            100
+        ]  # Randomly chosen range in the program.
+        target_end_pair = list(offsets_by_line.items())[
+            104
+        ]  # Randomly chosen range in the program.
+        new_text = "\n".join(
+            ["Line of new text"] * (((target_end_pair[0] + 1) - target_start_pair[0]) + 10)
+        )
+        (offsets_by_line, lines_by_offset, collected_affected_offsets) = apply_changes_to_indexes(
+            offsets_by_line, lines_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
+        )
+        self.assertTrue(len(collected_affected_offsets) == 1)

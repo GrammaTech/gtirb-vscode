@@ -13,8 +13,6 @@ import gtirb_functions
 import gtirb_rewriting
 import mcasm
 
-X86Syntax = mcasm.X86Syntax
-
 from pygls.lsp.methods import (
     DEFINITION,
     HOVER,
@@ -47,8 +45,11 @@ from pygls.lsp.types import (
 )
 import functools
 
+X86Syntax = mcasm.X86Syntax
+
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
+
 
 # From https://towardsdatascience.com/a-simple-way-to-trace-code-in-python-a15a25cbbf51
 def tracefunc(func):
@@ -92,7 +93,7 @@ current_documents = {}
 modified_offsets = {}
 
 
-def line_to_offsets(document_uri: str, line: int) -> Optional[gtirb.Offset]:
+def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
     """Lookup LINE in the current indexes to return the associated OFFSET"""
     logger.debug(f"line_to_offset({document_uri}, {line})")
     offsets = current_indexes[document_uri][0].get(line)
@@ -468,11 +469,18 @@ def apply_changes_to_indexes(
         # Affected offsets and lines.
         affected_offsets = set()
         for line in range(start, end):
-            for offset in offsets_by_line[line]:
+            for offset in offsets_by_line.get(line) or []:
                 affected_offsets.add(offset)
-        collected_affected_offsets.add(
-            list(sorted(affected_offsets))[0]
-        )  # Only first offset saved for later updates.
+        logger.debug(f"{len(affected_offsets)} offsets for {start}..{end}")
+        if len(affected_offsets) > 0:
+            # Only first offset saved for later updates.
+            collected_affected_offsets.add(
+                list(
+                    sorted(
+                        affected_offsets, key=lambda off: off.element_id.address + off.displacement
+                    )
+                )[0]
+            )
         affected_lines = list(range(start, start + new_count))
 
         # Update Lines->Offsets and Offsets->Lines.
@@ -494,7 +502,7 @@ def apply_changes_to_indexes(
             # every line in the range of the edit.
             new_offsets_by_line[line + growth] = affected_offsets
             for offset in offsets:
-                lines_by_offset[offsets] = affected_lines
+                lines_by_offset[offset] = affected_lines
 
     return (new_offsets_by_line, lines_by_offset, collected_affected_offsets)
 
@@ -503,10 +511,9 @@ def apply_changes_to_indexes(
 def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams):
     """Text document did change notification."""
     uri = params.text_document.uri
-    document = server.workspace.get_document(uri)
     logger.info(f"Text Document Did Change notification, {params.text_document.uri}")
     logger.debug(f"Changes: {params.content_changes}")
-    if not uri in modified_offsets:
+    if uri not in modified_offsets:
         modified_offsets[uri] = set()
 
     (offsets_by_line, lines_by_offset) = current_indexes[uri]
@@ -515,7 +522,7 @@ def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams)
         offsets_by_line,
         lines_by_offset,
         map(
-            lambda change: (change.range.start.line, change.range.end.line, change.text),
+            lambda change: (change.range.start.line, change.range.end.line + 1, change.text),
             params.content_changes,
         ),
     )
@@ -523,7 +530,7 @@ def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams)
     current_indexes[uri] = (offsets_by_line, lines_by_offset)
 
     logger.debug(
-        f"{len(collected_affected_offsets)} affected offsets for {len(params.content_changes)} edits"
+        f"{len(collected_affected_offsets)} offsets for {len(params.content_changes)} edits"
     )
     modified_offsets[params.text_document.uri].update(collected_affected_offsets)
 
@@ -544,12 +551,12 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
     document = workspace.get_document(uri)
     logger.debug(f"document {document} with {len(document.lines)} lines")
 
-    if (not uri in modified_offsets) or len(modified_offsets[uri]) == 0:
+    if (uri not in modified_offsets) or len(modified_offsets[uri]) == 0:
         server.show_message(f"no pending modifications to {uri}")
         return None
     mod_offsets = list(filter(None, modified_offsets[uri]))
 
-    if not uri in current_gtirbs:
+    if uri not in current_gtirbs:
         server.show_message(f"no GTIRB found for {uri}")
         return None
     ir = current_gtirbs[uri]
@@ -573,27 +580,29 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
 
         return gtirb_rewriting.Patch.from_function(patch)
 
+    blocks: List[gtirb.ByteBlock] = []
     for block in modified_blocks:
-        logger.debug(f"block {block}")
-        asm = "\n".join(
-            list(
-                map(
-                    lambda l: document.lines[l].split("#")[0].rstrip(),
-                    block_lines(current_indexes[uri][1], block),
-                )
-            )
-        )
-        logger.debug(f"asm {asm}")
-        if asm == "":
-            server.show_message(f"can not rewrite block {block} to have empty assembly text.")
-            return None
+        lines = block_lines(current_indexes[uri][1], block)
+        logger.debug(f"block {block} w/lines {lines}")
+        asm = "\n".join(list(map(lambda l: document.lines[l].split("#")[0].rstrip(), lines)))
 
-        ctx.replace_at(blocks_to_functions[block], block, 0, block.size, literal_patch(asm))
+        if asm == "":
+            logger.info("TODO: implement block deletion in gtirb-rewriting")
+            server.show_message(f"skipping {block} with empty assembly")
+        else:
+            logger.debug(f"rewriting {block} to asm:\n{asm}")
+            blocks += [block]
+            ctx.replace_at(blocks_to_functions[block], block, 0, block.size, literal_patch(asm))
 
     try:
-        ctx.apply()
+        if len(blocks) > 0:
+            ctx.apply()
+            ir.save_protobuf(uri.split("//")[1] + ".gtirb")
+            server.show_message("GTIRB rewritten successfully")
+        else:
+            server.show_message("No blocks to rewrite")
     except Exception as e:
-        server.show_message(f"Assembly error: {e}")
+        server.show_message(f"assembly error: {e}")
 
     # TODO:
     # - Update the text with gtirb-pprinter
