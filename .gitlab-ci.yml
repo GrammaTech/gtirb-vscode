@@ -6,7 +6,7 @@ stages:
     - test
 
 default:
-  image: python:3.9-slim
+  image: python:3.7-slim
   tags: ["kubernetes"]
 
 check-format:

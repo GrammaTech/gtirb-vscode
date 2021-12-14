@@ -84,7 +84,8 @@ DISPLACEMENT_INTERVAL = 5
 def offset_to_line(document_uri: str, offset: Union[gtirb.Offset, str, int]) -> Optional[int]:
     """Lookup OFFSET in the current indexes to return the associated LINE"""
     for i in range(offset.displacement, max(0, (offset.displacement - DISPLACEMENT_INTERVAL)), -1):
-        if (line := current_indexes[document_uri][1].get(gtirb.Offset(offset.element_id, i))) :
+        line = current_indexes[document_uri][1].get(gtirb.Offset(offset.element_id, i))
+        if line:
             return line
 
 
