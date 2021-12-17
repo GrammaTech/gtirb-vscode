@@ -11,6 +11,8 @@ import {
 
 import { GtirbEditorProvider } from './gtirbEditor';
 
+import { getAddressAndJump } from './customCommands';
+
 let client: LanguageClient;
 
 function getClientOptions(): LanguageClientOptions {
@@ -124,6 +126,13 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register our custom editor providers
     context.subscriptions.push(client.start());
     context.subscriptions.push(GtirbEditorProvider.register(context, pythonPath));
+
+    const disposable = vscode.commands.registerCommand('gtirb-vscode.goToAddress', () => {
+        getAddressAndJump();
+    });
+
+    context.subscriptions.push(disposable);
+
 }
 
 

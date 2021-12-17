@@ -98,7 +98,17 @@
                     "default": "Example message."
                 }
             }
-        }
+        },
+        "commands": [
+            {
+                "command": "gtirb-vscode.goToAddress",
+                "title": "Go To Address"
+            },
+            {
+                "command": "getLineFromAddress",
+                "title": "Get Line From Address"
+            }
+        ]
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",

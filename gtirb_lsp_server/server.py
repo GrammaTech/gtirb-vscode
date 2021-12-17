@@ -151,6 +151,7 @@ def offsets_at_references(
 # See pygls example: json language server
 class GtirbLanguageServer(LanguageServer):
     CONFIGURATION_SECTION = "gtirbServer"
+    CMD_GET_LINE_FROM_ADDRESS = "getLineFromAddress"
 
     def __init__(self):
         super().__init__()
@@ -356,6 +357,38 @@ def ensure_index(text_document):
 
 
 server = GtirbLanguageServer()
+
+
+@server.command(GtirbLanguageServer.CMD_GET_LINE_FROM_ADDRESS)
+async def get_line_from_address(ls, *args):
+    """Get the line number for an address for a document"""
+    document_uri = args[0][0][2]
+    address_str = args[0][1]
+    logger.info(f"Command: get_line_from_address, uri: {document_uri}")
+    if document_uri not in current_documents:
+        ls.show_message(f" No address mapping for {document_uri}")
+        return None
+    try:
+        address = int(address_str, 16)
+    except Exception:
+        logger.info(f"get_line_from_address: invalid address {address_str}")
+        return None
+    ir = current_gtirbs[document_uri]
+    for block in ir.modules[0].byte_blocks_on(address):
+        offset = gtirb.Offset(
+            element_id=ir.get_by_uuid(block.uuid), displacement=(address - block.address)
+        )
+        line = current_indexes[document_uri][1].get(offset)
+        text_line = current_documents[document_uri][line]
+        if line:
+            range = Range(
+                start=Position(line=line, character=0),
+                end=Position(line=line, character=(len(text_line))),
+            )
+            return range
+    # If no line found, send message to UI
+    ls.show_message(f" no line found for {address_str}")
+    return None
 
 
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
