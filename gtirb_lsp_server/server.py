@@ -45,11 +45,6 @@ from pygls.lsp.types import (
 )
 import functools
 
-X86Syntax = mcasm.X86Syntax
-
-logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
-
 
 # From https://towardsdatascience.com/a-simple-way-to-trace-code-in-python-a15a25cbbf51
 def tracefunc(func):
@@ -64,6 +59,10 @@ def tracefunc(func):
 
     return tracefunc_closure
 
+
+X86Syntax = mcasm.X86Syntax
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_PORT = 3036
 DEFAULT_TCP_FLAG = False

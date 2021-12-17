@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-from .server import gtirb_stdio_server, gtirb_tcp_server
+from .server import gtirb_stdio_server, gtirb_tcp_server, logger
 
 DEFAULT_PORT = 3036
 DEFAULT_HOST = "127.0.0.1"
@@ -23,7 +23,10 @@ def main():
     parser.add_argument(
         "--port", type=int, default=DEFAULT_PORT, help="Port to listen for requests on.",
     )
-    # (see pygls example)
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose log output.")
+    parser.add_argument(
+        "-vv", "--very-verbose", action="store_true", help="Very verbose log output."
+    )
     parser.add_argument(
         "--stdio",
         action="store_true",
@@ -32,7 +35,13 @@ def main():
     )
 
     args = parser.parse_args()
-    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
+
+    if args.verbose:
+        logger.setLevel(logging.INFO)
+
+    if args.very_verbose:
+        logger.setLevel(logging.DEBUG)
+
     if args.tcp:
         gtirb_tcp_server(host=args.host, port=args.port)
     else:
