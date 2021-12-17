@@ -24,3 +24,12 @@ Starting a TCP based server
 ```
 % gtirb_lsp_server --tcp [ --host HOST ] [ --port PORT ]
 ```
+
+Testing
+
+```shell
+from gtirb_lsp_server.test.test_gtirb_lsp_server import *
+test = InitialIndexTestDriver()
+test.setUp()
+(offset_by_line, line_by_offset) = test.get_current_indexes()
+```

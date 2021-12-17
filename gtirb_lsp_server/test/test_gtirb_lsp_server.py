@@ -3,7 +3,6 @@ import unittest
 from pathlib import Path
 from typing import Text
 from uuid import UUID
-from itertools import chain
 
 import gtirb
 from gtirb_lsp_server.server import (
@@ -22,6 +21,7 @@ from gtirb_lsp_server.server import (
     symbol_for_name,
     symbolic_references,
     apply_changes_to_indexes,
+    block_text,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -40,6 +40,9 @@ class InitialIndexTestDriver(unittest.TestCase):
         self.asm_path = DATA_DIR / "leafnode.gtasm"
         self.asmtext = slurp(self.asm_path)
         self.asm = self.asmtext.splitlines()
+
+    def get_current_indexes(self):
+        return line_offsets_to_maps(self.gtirb, get_line_offset(self.gtirb, self.asm))
 
     def test_get_line_offsets(self):
         line_offsets = get_line_offset(self.gtirb, self.asm)
@@ -62,7 +65,7 @@ class InitialIndexTestDriver(unittest.TestCase):
         )
 
     def test_line_offsets_to_maps(self):
-        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
         )
         counter = 0
@@ -70,7 +73,7 @@ class InitialIndexTestDriver(unittest.TestCase):
         for i in range(len(self.asm)):
             if found:
                 break
-            for off in offsets_by_line.get(i) or []:
+            for off in offset_by_line.get(i) or []:
                 counter += 1
                 auxdata = offset_to_auxdata(self.gtirb, off)
                 if auxdata:
@@ -91,11 +94,11 @@ class InitialIndexTestDriver(unittest.TestCase):
         self.assertTrue(len(blocks) > 0)
 
     def test_first_line_for_uuid(self):
-        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
         )
-        uuid_w_line = list(offsets_by_line.items())[0][1][0].element_id.uuid
-        first_line = first_line_for_uuid(offsets_by_line, uuid_w_line)
+        uuid_w_line = list(offset_by_line.values())[0].element_id.uuid
+        first_line = first_line_for_uuid(offset_by_line, uuid_w_line)
         self.assertTrue(isinstance(first_line, int))
 
     def test_function_blocks_to_lines(self):
@@ -153,23 +156,21 @@ class InitialIndexTestDriver(unittest.TestCase):
         expected_references = [1318, 1367]
         sym = symbol_for_name(self.gtirb, symbol_name)
         self.assertTrue(sym is not None)
-        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
         )
-        referent_line = first_line_for_uuid(offsets_by_line, sym.referent.uuid)
+        referent_line = first_line_for_uuid(offset_by_line, sym.referent.uuid)
         self.assertTrue(referent_line == expected_definition_line)
-        offset = offsets_by_line[referent_line][0]
+        offset = offset_by_line[referent_line]
         self.assertTrue(offset is not None)
         references = list(symbolic_references(self.gtirb, offset.element_id.references))
         offsets_and_symbolic_expressions = offsets_at_references(self.gtirb, references)
         reference_lines = list(
             filter(
                 lambda it: isinstance(it, int),
-                chain(
-                    *map(
-                        lambda off_and_se: lines_by_offset[off_and_se[0]],
-                        offsets_and_symbolic_expressions,
-                    )
+                map(
+                    lambda off: line_by_offset.get(off),
+                    map(lambda off_and_se: off_and_se[0], offsets_and_symbolic_expressions,),
                 ),
             )
         )
@@ -177,55 +178,55 @@ class InitialIndexTestDriver(unittest.TestCase):
         self.assertTrue(reference_lines == expected_references)
 
     def test_apply_changes_to_indexes_same_size(self):
-        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
         )
-        target_start_pair = list(offsets_by_line.items())[
+        target_start_pair = list(offset_by_line.items())[
             100
         ]  # Randomly chosen range in the program.
-        target_end_pair = list(offsets_by_line.items())[
-            104
-        ]  # Randomly chosen range in the program.
+        target_end_pair = list(offset_by_line.items())[104]  # Randomly chosen range in the program.
         new_text = "\n".join(
             ["Line of new text"] * ((target_end_pair[0] + 1) - target_start_pair[0])
         )
-        (offsets_by_line, lines_by_offset, collected_affected_offsets) = apply_changes_to_indexes(
-            offsets_by_line, lines_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
+        (offset_by_line, line_by_offset) = apply_changes_to_indexes(
+            offset_by_line, line_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
         )
-        self.assertTrue(len(collected_affected_offsets) == 1)
 
     def test_apply_changes_to_indexes_smaller_replacement(self):
-        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
         )
-        target_start_pair = list(offsets_by_line.items())[
+        target_start_pair = list(offset_by_line.items())[
             100
         ]  # Randomly chosen range in the program.
-        target_end_pair = list(offsets_by_line.items())[
-            104
-        ]  # Randomly chosen range in the program.
+        target_end_pair = list(offset_by_line.items())[104]  # Randomly chosen range in the program.
         new_text = "\n".join(
             ["Line of new text"] * (((target_end_pair[0] + 1) - target_start_pair[0]) - 1)
         )
-        (offsets_by_line, lines_by_offset, collected_affected_offsets) = apply_changes_to_indexes(
-            offsets_by_line, lines_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
+        (offset_by_line, line_by_offset) = apply_changes_to_indexes(
+            offset_by_line, line_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
         )
-        self.assertTrue(len(collected_affected_offsets) == 1)
 
     def test_apply_changes_to_indexes_larger_replacement(self):
-        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
         )
-        target_start_pair = list(offsets_by_line.items())[
+        target_start_pair = list(offset_by_line.items())[
             100
         ]  # Randomly chosen range in the program.
-        target_end_pair = list(offsets_by_line.items())[
-            104
-        ]  # Randomly chosen range in the program.
+        target_end_pair = list(offset_by_line.items())[104]  # Randomly chosen range in the program.
         new_text = "\n".join(
             ["Line of new text"] * (((target_end_pair[0] + 1) - target_start_pair[0]) + 10)
         )
-        (offsets_by_line, lines_by_offset, collected_affected_offsets) = apply_changes_to_indexes(
-            offsets_by_line, lines_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
+        (offset_by_line, line_by_offset) = apply_changes_to_indexes(
+            offset_by_line, line_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
         )
-        self.assertTrue(len(collected_affected_offsets) == 1)
+
+    def test_block_text(self):
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
+            self.gtirb, get_line_offset(self.gtirb, self.asm)
+        )
+        cb = list(offset_by_line.items())[100][1].element_id
+        text = block_text(line_by_offset, cb, self.asm)
+        self.assertTrue(isinstance(text, str))
+        self.assertTrue(len(text.splitlines()) > 1)

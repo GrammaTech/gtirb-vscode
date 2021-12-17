@@ -6,7 +6,6 @@ import os
 import re
 import uuid
 from typing import Dict, List, Optional, Set, Tuple, Union
-from itertools import chain
 
 import gtirb
 import gtirb_functions
@@ -89,18 +88,17 @@ current_documents = {}
 
 #
 # Offsets with pending edits.
-modified_offsets = {}
+modified_blocks = {}
 
 
-def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
-    """Lookup LINE in the current indexes to return the associated OFFSET"""
-    logger.debug(f"line_to_offset({document_uri}, {line})")
-    offsets = current_indexes[document_uri][0].get(line)
-    if offsets and isinstance(offsets, list) and len(offsets) == 1:
-        return offsets[0]
-    else:
-        logger.debug(f"line_to_offset -> {offsets}")
-        return None
+# Local class allows addition  of a configuration section
+# See pygls example: json language server
+class GtirbLanguageServer(LanguageServer):
+    CONFIGURATION_SECTION = "gtirbServer"
+    CMD_GET_LINE_FROM_ADDRESS = "getLineFromAddress"
+
+    def __init__(self):
+        super().__init__()
 
 
 # Symbolic references may appear at addresses not represented by offsets in the
@@ -110,23 +108,23 @@ def line_to_offset(document_uri: str, line: int) -> Optional[gtirb.Offset]:
 DISPLACEMENT_INTERVAL = 5
 
 
-def offset_to_line(document_uri: str, offset: Union[gtirb.Offset, str, int]) -> Optional[int]:
+def offset_to_line(
+    line_by_offset: Dict[int, gtirb.Offset], offset: Union[gtirb.Offset, str, int]
+) -> Optional[int]:
     """Lookup OFFSET in the current indexes to return the associated LINE"""
     for i in range(offset.displacement, max(0, (offset.displacement - DISPLACEMENT_INTERVAL)), -1):
-        lines = current_indexes[document_uri][1].get(gtirb.Offset(offset.element_id, i))
-        if lines and isinstance(lines, list) and len(lines) == 1:
-            return lines[0]
+        line = line_by_offset.get(gtirb.Offset(offset.element_id, i))
+        if line and isinstance(line, int):
+            return line
+    return None
 
 
 def offset_to_auxdata(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
-    logger.debug(f"offset_to_auxdata(IR, {offset})")
     result = ""
     for name in offset_indexed_aux_data(ir):
         data = ir.modules[0].aux_data[name].data.get(offset)
         if data:
             result += f"{name}: {data}\n"
-        else:
-            logger.debug(f"Can't find {offset} in {name}")
 
     if result == "":
         return None
@@ -176,17 +174,7 @@ def offsets_at_references(
     return results
 
 
-# Local class allows addition  of a configuration section
-# See pygls example: json language server
-class GtirbLanguageServer(LanguageServer):
-    CONFIGURATION_SECTION = "gtirbServer"
-    CMD_GET_LINE_FROM_ADDRESS = "getLineFromAddress"
-
-    def __init__(self):
-        super().__init__()
-
-
-def get_byte_interval_from_block(module, thisblock):
+def block_byte_interval(module, thisblock):
     for section in module.sections:
         for byte_interval in section.byte_intervals:
             for block in byte_interval.blocks:
@@ -195,12 +183,13 @@ def get_byte_interval_from_block(module, thisblock):
     return None
 
 
-def get_block_address(module, block):
-    if type(block) is gtirb.block.CodeBlock or type(block) is gtirb.block.DataBlock:
-        byte_interval = get_byte_interval_from_block(module, block)
-        if byte_interval is not None:
-            return hex(byte_interval.address + block.offset)
-    return None
+def first_line_for_uuid(offset_by_line: Dict[int, gtirb.Offset], uuid: uuid.UUID) -> Optional[int]:
+    return sorted(
+        map(
+            lambda pair: pair[0],
+            filter(lambda pair: pair[1].element_id.uuid == uuid, offset_by_line.items()),
+        )
+    )[0]
 
 
 def blocks_for_function_name(ir: gtirb, name: str) -> Optional[Set[gtirb.ByteBlock]]:
@@ -210,56 +199,36 @@ def blocks_for_function_name(ir: gtirb, name: str) -> Optional[Set[gtirb.ByteBlo
     return None
 
 
-def first_line_for_uuid(
-    offsets_by_line: Dict[int, List[gtirb.Offset]], uuid: uuid.UUID
-) -> Optional[int]:
-    pairs = list(
+def first_line_for_blocks(
+    offset_by_line: Dict[int, gtirb.Offset], blocks: Set[gtirb.ByteBlock]
+) -> List[int]:
+    return sorted(map(lambda b: first_line_for_uuid(offset_by_line, b.uuid), blocks))[0]
+
+
+def block_lines(line_by_offset: Dict[gtirb.Offset, int], block: gtirb.ByteBlock) -> List[int]:
+    return list(
         filter(
-            lambda pair: uuid in map(lambda o: o.element_id.uuid, pair[1]), offsets_by_line.items()
+            None,
+            map(
+                lambda i: line_by_offset.get(gtirb.Offset(element_id=block, displacement=i)),
+                range(block.size),
+            ),
         )
     )
-    if not pairs:
-        return None
-    else:
-        pairs.sort()
-        return pairs[0][0]
 
 
-def first_line_for_blocks(
-    offsets_by_line: Dict[int, List[gtirb.Offset]], blocks: Set[gtirb.ByteBlock]
-):
-    first_line = None
-    for block_uuid in map(lambda block: block.uuid, blocks):
-        current_line = first_line_for_uuid(offsets_by_line, block_uuid)
-        if current_line:
-            if not first_line or current_line < first_line:
-                first_line = current_line
-    return first_line
-
-
-def block_lines(
-    lines_by_offset: Dict[gtirb.Offset, List[int]], block: gtirb.ByteBlock
-) -> List[int]:
-    logger.debug(f"block_lines(index[{len(list(lines_by_offset.keys()))}], {block})")
-    return list(
-        chain(
-            *filter(
-                None,
-                map(
-                    lambda i: lines_by_offset.get(gtirb.Offset(element_id=block, displacement=i)),
-                    range(block.size),
-                ),
-            )
+def block_text(
+    line_by_offset: Dict[gtirb.Offset, int], block: gtirb.ByteBlock, asm_lines: List[str]
+) -> str:
+    return "\n".join(
+        list(
+            map(lambda l: asm_lines[l].split("#")[0].rstrip(), block_lines(line_by_offset, block),)
         )
     )
 
 
 def symbol_for_name(ir: gtirb, name: str) -> Optional[gtirb.Symbol]:
-    symbols = list(filter(lambda s: s.name == name, ir.modules[0].symbols))
-    if symbols:
-        return symbols[0]
-    else:
-        return None
+    return next(map(lambda s: s, filter(lambda s: s.name == name, ir.modules[0].symbols)))
 
 
 #
@@ -330,17 +299,19 @@ def get_line_offset(ir: gtirb, current_lines: StringList) -> List[Tuple[int, Tup
     return line_offsets
 
 
-def line_offsets_to_maps(ir: gtirb, line_offsets):
+def line_offsets_to_maps(
+    ir: gtirb, line_offsets: List[Tuple[int, int]]
+) -> Tuple[Dict[int, gtirb.Offset], Dict[gtirb.Offset, int]]:
     """Create maps from line_uuids going both ways."""
     logger.debug("Create maps from line_uuids going both ways.")
-    offsets_by_line = {}
-    lines_by_offset = {}
+    offset_by_line = {}
+    line_by_offset = {}
     for (line, offset) in line_offsets:
-        # Convert (uuid,displacement) tuples to actual GTIRB offsets.
+        # Convert (uuid, displacement) tuples to actual GTIRB offsets.
         offset = gtirb.Offset(ir.get_by_uuid(offset[0]), offset[1])
-        offsets_by_line[line] = [offset]
-        lines_by_offset[offset] = [line]
-    return (offsets_by_line, lines_by_offset)
+        offset_by_line[line] = offset
+        line_by_offset[offset] = line
+    return (offset_by_line, line_by_offset)
 
 
 # Used to serialize UUIDs to JSON.
@@ -446,11 +417,11 @@ async def get_line_from_address(ls, *args):
 
 
 def apply_changes_to_indexes(
-    offsets_by_line: Dict[int, List[gtirb.Offset]],
-    lines_by_offset: Dict[gtirb.Offset, List[int]],
+    offset_by_line: Dict[int, gtirb.Offset],
+    line_by_offset: Dict[gtirb.Offset, int],
     changes: List[Tuple[int, int, str]],
-) -> Tuple[Dict[int, List[gtirb.Offset]], Dict[gtirb.Offset, List[int]], Set[gtirb.Offset]]:
-    collected_affected_offsets: Set[gtirb.Offset] = set()
+) -> Tuple[Dict[int, gtirb.Offset], Dict[gtirb.Offset, int], Set[gtirb.Offset]]:
+
     for start, end, text in changes:
         new_count = len(text.splitlines())
         old_count = (end + 1) - start
@@ -461,49 +432,25 @@ def apply_changes_to_indexes(
                 return line
             if line > end:
                 return line + growth
-            if line < (end + growth):
+            if line < (start + min(new_count, old_count)):
                 return line
-            return 0
+            return None
 
-        # Affected offsets and lines.
-        affected_offsets = set()
-        for line in range(start, end):
-            for offset in offsets_by_line.get(line) or []:
-                affected_offsets.add(offset)
-        logger.debug(f"{len(affected_offsets)} offsets for {start}..{end}")
-        if len(affected_offsets) > 0:
-            # Only first offset saved for later updates.
-            collected_affected_offsets.add(
-                list(
-                    sorted(
-                        affected_offsets, key=lambda off: off.element_id.address + off.displacement
-                    )
-                )[0]
-            )
-        affected_lines = list(range(start, start + new_count))
+        new_offset_by_line = {}
+        new_line_by_offset = {}
 
-        # Update Lines->Offsets and Offsets->Lines.
-        new_offsets_by_line = {}
-        for line, offsets in sorted(offsets_by_line.items()):
-            # Before the start of the change.
-            if line < start:
-                new_offsets_by_line[line] = offsets
-                continue
-            # After the end of the change.
-            if line > end:
-                new_offsets_by_line[line + growth] = offsets
-                for offset in offsets:
-                    lines_by_offset[offset] = list(
-                        map(lambda l: update_line(l), lines_by_offset[offset])
-                    )
-                continue
-            # Within the range of the change every offset now maps to
-            # every line in the range of the edit.
-            new_offsets_by_line[line + growth] = affected_offsets
-            for offset in offsets:
-                lines_by_offset[offset] = affected_lines
+        lines = sorted(offset_by_line.keys())
+        for line in range(min(lines), max(lines) + growth):
+            new_line = update_line(line)
+            new_offset = offset_by_line.get(new_line)
+            if new_line and new_offset:
+                new_offset_by_line[new_line] = new_offset
+                new_line_by_offset[new_offset] = new_line
 
-    return (new_offsets_by_line, lines_by_offset, collected_affected_offsets)
+        offset_by_line = new_offset_by_line
+        line_by_offset = new_line_by_offset
+
+    return (new_offset_by_line, line_by_offset)
 
 
 @server.feature(TEXT_DOCUMENT_DID_CHANGE)
@@ -511,27 +458,40 @@ def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams)
     """Text document did change notification."""
     uri = params.text_document.uri
     logger.info(f"Text Document Did Change notification, {params.text_document.uri}")
-    logger.debug(f"Changes: {params.content_changes}")
-    if uri not in modified_offsets:
-        modified_offsets[uri] = set()
+    if uri not in modified_blocks:
+        modified_blocks[uri] = set()
 
-    (offsets_by_line, lines_by_offset) = current_indexes[uri]
+    if uri not in current_indexes:
+        server.show_message(f"document {uri} not in indexes")
+        return None
+    (offset_by_line, line_by_offset) = current_indexes[uri]
 
-    (offsets_by_line, lines_by_offset, collected_affected_offsets) = apply_changes_to_indexes(
-        offsets_by_line,
-        lines_by_offset,
+    # Track the blocks modified by the edit.
+    for change in params.content_changes:
+        for line in range(change.range.start.line, change.range.end.line + 1):
+            offset = offset_by_line.get(line)
+            logger.info(f"offset {offset} for edit line {line}")
+            if offset:
+                if offset.element_id not in modified_blocks[uri]:
+                    asm = block_text(
+                        line_by_offset, offset.element_id, server.workspace.get_document(uri).lines,
+                    )
+                    logger.debug(f" modified block {offset.element_id} with:\n{asm}")
+                modified_blocks[uri].add(offset.element_id)
+
+    # Update the indices to reflect the edit.
+    (offset_by_line, line_by_offset) = apply_changes_to_indexes(
+        offset_by_line,
+        line_by_offset,
         map(
             lambda change: (change.range.start.line, change.range.end.line + 1, change.text),
             params.content_changes,
         ),
     )
 
-    current_indexes[uri] = (offsets_by_line, lines_by_offset)
+    current_indexes[uri] = (offset_by_line, line_by_offset)
 
-    logger.debug(
-        f"{len(collected_affected_offsets)} offsets for {len(params.content_changes)} edits"
-    )
-    modified_offsets[params.text_document.uri].update(collected_affected_offsets)
+    logger.info(f"{len(modified_blocks[uri])} blocks for {len(params.content_changes)} edits")
 
     # TODO: Update the lines<->offset map as the lines change.
     # - get the affected lines from the range
@@ -550,18 +510,16 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
     document = workspace.get_document(uri)
     logger.debug(f"document {document} with {len(document.lines)} lines")
 
-    if (uri not in modified_offsets) or len(modified_offsets[uri]) == 0:
+    if (uri not in modified_blocks) or len(modified_blocks[uri]) == 0:
         server.show_message(f"no pending modifications to {uri}")
         return None
-    mod_offsets = list(filter(None, modified_offsets[uri]))
 
     if uri not in current_gtirbs:
         server.show_message(f"no GTIRB found for {uri}")
         return None
     ir = current_gtirbs[uri]
 
-    modified_blocks = set(map(lambda o: o.element_id, mod_offsets))
-    logger.debug(f"applying {len(modified_blocks)} modifications to {uri}")
+    logger.info(f"applying {len(modified_blocks[uri])} modifications to {uri}")
 
     functions = gtirb_functions.Function.build_functions(ir.modules[0])
     blocks_to_functions = {block: func for func in functions for block in func.get_all_blocks()}
@@ -580,10 +538,8 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
         return gtirb_rewriting.Patch.from_function(patch)
 
     blocks: List[gtirb.ByteBlock] = []
-    for block in modified_blocks:
-        lines = block_lines(current_indexes[uri][1], block)
-        logger.debug(f"block {block} w/lines {lines}")
-        asm = "\n".join(list(map(lambda l: document.lines[l].split("#")[0].rstrip(), lines)))
+    for block in modified_blocks[uri]:
+        asm = block_text(current_indexes[uri][1], block, document.lines)
 
         if asm == "":
             logger.info("TODO: implement block deletion in gtirb-rewriting")
@@ -711,6 +667,7 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
         and params.text_document.uri in current_indexes
         and params.text_document.uri in current_gtirbs
     ):
+        (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
         current_lines = current_documents[params.text_document.uri]
         current_token = isolate_token(
             current_lines[params.position.line], params.position.character
@@ -738,11 +695,9 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
     if symbol is None:
         reference_line = params.position.line
     else:
-        reference_line = first_line_for_uuid(
-            current_indexes[params.text_document.uri][0], symbol.referent.uuid
-        )
+        reference_line = first_line_for_uuid(offset_by_line, symbol.referent.uuid)
 
-    offset = line_to_offset(params.text_document.uri, reference_line)
+    offset = offset_by_line.get(reference_line)
     if offset is None:
         ls.show_message(f" no offset found for line {reference_line}.")
         return None
@@ -764,10 +719,7 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
         filter(
             lambda it: isinstance(it[0], int),
             map(
-                lambda off_and_se: (
-                    offset_to_line(params.text_document.uri, off_and_se[0]),
-                    off_and_se[1],
-                ),
+                lambda off_and_se: (offset_to_line(line_by_offset, off_and_se[0]), off_and_se[1],),
                 offsets_and_symbolic_expressions,
             ),
         )
@@ -812,7 +764,8 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
 @server.feature(HOVER, HoverOptions())
 def get_hover(ls: GtirbLanguageServer, params: HoverParams) -> Optional[Hover]:
     logger.info(f"Hover request received uri: {params.text_document.uri}")
-    offset = line_to_offset(params.text_document.uri, params.position.line)
+    (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
+    offset = offset_by_line.get(params.position.line)
     if offset:
         auxdata = offset_to_auxdata(current_gtirbs[params.text_document.uri], offset)
     else:
@@ -838,8 +791,10 @@ def offset_indexed_aux_data(ir: gtirb) -> List[str]:
 
 
 def gtirb_tcp_server(host: str, port: int) -> None:
+    logger.warn(f"Starting server on {host}:{port}")
     server.start_tcp(host, port)
 
 
 def gtirb_stdio_server() -> None:
+    logger.warn("Starting server on STDIO")
     server.start_io()

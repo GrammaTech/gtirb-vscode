@@ -4,6 +4,8 @@ node_modules
 .vscode-test/
 *.vsix
 gtirb_lsp_server/__pycache__/
+gtirb_lsp_server/test/data/cond
+gtirb_lsp_server/test/data/cond.gtirb
 nbproject/
 .coverage
 __pycache__/
