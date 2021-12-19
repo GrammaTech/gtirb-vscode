@@ -791,10 +791,8 @@ def offset_indexed_aux_data(ir: gtirb) -> List[str]:
 
 
 def gtirb_tcp_server(host: str, port: int) -> None:
-    logger.warn(f"Starting server on {host}:{port}")
     server.start_tcp(host, port)
 
 
 def gtirb_stdio_server() -> None:
-    logger.warn("Starting server on STDIO")
     server.start_io()

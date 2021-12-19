@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-from .server import gtirb_stdio_server, gtirb_tcp_server, logger
+from .server import gtirb_stdio_server, gtirb_tcp_server
 
 DEFAULT_PORT = 3036
 DEFAULT_HOST = "127.0.0.1"
@@ -35,12 +35,18 @@ def main():
     )
 
     args = parser.parse_args()
+    logging_setup = False
 
     if args.verbose:
-        logger.setLevel(logging.INFO)
+        logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
+        logging_setup = True
 
     if args.very_verbose:
-        logger.setLevel(logging.DEBUG)
+        logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.DEBUG)
+        logging_setup = True
+
+    if not logging_setup:
+        logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.WARN)
 
     if args.tcp:
         gtirb_tcp_server(host=args.host, port=args.port)
