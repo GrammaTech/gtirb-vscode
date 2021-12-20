@@ -68,21 +68,7 @@ class InitialIndexTestDriver(unittest.TestCase):
         (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
         )
-        counter = 0
-        found = False
-        for i in range(len(self.asm)):
-            if found:
-                break
-            for off in offset_by_line.get(i) or []:
-                counter += 1
-                auxdata = offset_to_auxdata(self.gtirb, off)
-                if auxdata:
-                    found = True
-                    print(f"{i} {off.element_id.uuid.hex} {off.displacement} {auxdata}")
-                    break
-        print(f"{counter} line to UUID maps processed")
-        self.assertTrue(counter > 0)
-        self.assertTrue(found)
+        self.assertTrue(isinstance(offset_to_auxdata(self.gtirb, offset_by_line.get(300)), str))
 
     def test_offset_indexed_aux_data(self):
         offset_indexed_names = offset_indexed_aux_data(self.gtirb)
