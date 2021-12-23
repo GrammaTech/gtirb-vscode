@@ -553,6 +553,7 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
     try:
         if len(blocks) > 0:
             ctx.apply()
+            # FIXME: This will not work with remote operation.
             ir.save_protobuf(uri.split("//")[1] + ".gtirb")
             server.show_message("GTIRB rewritten successfully")
         else:
