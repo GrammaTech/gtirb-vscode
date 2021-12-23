@@ -9,3 +9,4 @@ gtirb_lsp_server/test/data/cond.gtirb
 nbproject/
 .coverage
 __pycache__/
+wiki/
