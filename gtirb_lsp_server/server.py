@@ -42,21 +42,24 @@ from pygls.lsp.types import (
     ReferenceOptions,
     ReferenceParams,
 )
-import functools
 
-
-# From https://towardsdatascience.com/a-simple-way-to-trace-code-in-python-a15a25cbbf51
-def tracefunc(func):
-    """Decorates a function to show its trace."""
-
-    @functools.wraps(func)
-    def tracefunc_closure(*args, **kwargs):
-        """The closure."""
-        result = func(*args, **kwargs)
-        logger.debug(f"{func.__name__}(args={args}, kwargs={kwargs}) => {result}")
-        return result
-
-    return tracefunc_closure
+# # Might be useful at some point but keeping commented now to avoid hurting our test coverage.
+# #
+# # From https://towardsdatascience.com/a-simple-way-to-trace-code-in-python-a15a25cbbf51
+#
+# import functools
+#
+# def tracefunc(func):
+#     """Decorates a function to show its trace."""
+#
+#     @functools.wraps(func)
+#     def tracefunc_closure(*args, **kwargs):
+#         """The closure."""
+#         result = func(*args, **kwargs)
+#         logger.debug(f"{func.__name__}(args={args}, kwargs={kwargs}) => {result}")
+#         return result
+#
+#     return tracefunc_closure
 
 
 X86Syntax = mcasm.X86Syntax

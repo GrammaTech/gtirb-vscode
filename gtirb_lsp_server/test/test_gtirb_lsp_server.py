@@ -22,6 +22,8 @@ from gtirb_lsp_server.server import (
     symbolic_references,
     apply_changes_to_indexes,
     block_text,
+    offset_to_line,
+    block_byte_interval,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -70,6 +72,14 @@ class InitialIndexTestDriver(unittest.TestCase):
         )
         self.assertTrue(isinstance(offset_to_auxdata(self.gtirb, offset_by_line.get(300)), str))
 
+    def test_offsets_to_line_maps(self):
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
+            self.gtirb, get_line_offset(self.gtirb, self.asm)
+        )
+        self.assertTrue(
+            isinstance(offset_to_line(line_by_offset, list(offset_by_line.values())[0]), int)
+        )
+
     def test_offset_indexed_aux_data(self):
         offset_indexed_names = offset_indexed_aux_data(self.gtirb)
         self.assertTrue(len(offset_indexed_names) > 0)
@@ -78,6 +88,12 @@ class InitialIndexTestDriver(unittest.TestCase):
     def test_blocks_for_function_name(self):
         blocks = blocks_for_function_name(self.gtirb, "generateMessageID")
         self.assertTrue(len(blocks) > 0)
+
+    def test_block_byte_interval(self):
+        blocks = blocks_for_function_name(self.gtirb, "generateMessageID")
+        self.assertTrue(
+            isinstance(block_byte_interval(self.gtirb, next(iter(blocks))), gtirb.ByteInterval)
+        )
 
     def test_first_line_for_uuid(self):
         (offset_by_line, line_by_offset) = line_offsets_to_maps(
