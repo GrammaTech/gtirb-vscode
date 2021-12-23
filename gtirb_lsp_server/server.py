@@ -229,7 +229,7 @@ def block_text(
 
 
 def symbol_for_name(ir: gtirb, name: str) -> Optional[gtirb.Symbol]:
-    return next(map(lambda s: s, filter(lambda s: s.name == name, ir.modules[0].symbols)))
+    return next(map(lambda s: s, filter(lambda s: s.name == name, ir.modules[0].symbols)), None)
 
 
 #
