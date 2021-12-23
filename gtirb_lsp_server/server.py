@@ -111,11 +111,9 @@ class GtirbLanguageServer(LanguageServer):
 DISPLACEMENT_INTERVAL = 5
 
 
-def offset_to_line(
-    line_by_offset: Dict[int, gtirb.Offset], offset: Union[gtirb.Offset, str, int]
-) -> Optional[int]:
+def offset_to_line(line_by_offset: Dict[int, gtirb.Offset], offset: gtirb.Offset) -> Optional[int]:
     """Lookup OFFSET in the current indexes to return the associated LINE"""
-    for i in range(offset.displacement, max(0, (offset.displacement - DISPLACEMENT_INTERVAL)), -1):
+    for i in range(offset.displacement, max(-1, (offset.displacement - DISPLACEMENT_INTERVAL)), -1):
         line = line_by_offset.get(gtirb.Offset(offset.element_id, i))
         if line and isinstance(line, int):
             return line
