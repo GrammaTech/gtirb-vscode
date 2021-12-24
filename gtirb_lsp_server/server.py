@@ -429,12 +429,10 @@ def apply_changes_to_indexes(
         growth = new_count - old_count
 
         def update_line(line):
-            if line < start:
+            if line < (start + min(new_count, old_count)):
                 return line
             if line > end:
                 return line + growth
-            if line < (start + min(new_count, old_count)):
-                return line
             return None
 
         new_offset_by_line = {}
