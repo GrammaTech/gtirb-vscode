@@ -190,9 +190,13 @@ class InitialIndexTestDriver(unittest.TestCase):
         new_text = "\n".join(
             ["Line of new text"] * ((target_end_pair[0] + 1) - target_start_pair[0])
         )
-        (offset_by_line, line_by_offset) = apply_changes_to_indexes(
+        (new_offset_by_line, new_line_by_offset) = apply_changes_to_indexes(
             offset_by_line, line_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
         )
+        # When the size doesn't change, the same sets of lines should have offsets.
+        print(f"OLD LINES: {sorted(offset_by_line.keys())}")
+        print(f"NEW LINES: {sorted(new_offset_by_line.keys())}")
+        self.assertTrue(set(offset_by_line.keys()) == set(new_offset_by_line.keys()))
 
     def test_apply_changes_to_indexes_smaller_replacement(self):
         (offset_by_line, line_by_offset) = line_offsets_to_maps(
@@ -205,9 +209,13 @@ class InitialIndexTestDriver(unittest.TestCase):
         new_text = "\n".join(
             ["Line of new text"] * (((target_end_pair[0] + 1) - target_start_pair[0]) - 1)
         )
-        (offset_by_line, line_by_offset) = apply_changes_to_indexes(
+        (new_offset_by_line, new_line_by_offset) = apply_changes_to_indexes(
             offset_by_line, line_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
         )
+        # When the size decreases, then fewer lines should have offsets.
+        print(f"OLD LINES: {sorted(offset_by_line.keys())}")
+        print(f"NEW LINES: {sorted(new_offset_by_line.keys())}")
+        self.assertTrue(len(offset_by_line.keys()) > len(new_offset_by_line.keys()))
 
     def test_apply_changes_to_indexes_larger_replacement(self):
         (offset_by_line, line_by_offset) = line_offsets_to_maps(
@@ -220,9 +228,25 @@ class InitialIndexTestDriver(unittest.TestCase):
         new_text = "\n".join(
             ["Line of new text"] * (((target_end_pair[0] + 1) - target_start_pair[0]) + 10)
         )
-        (offset_by_line, line_by_offset) = apply_changes_to_indexes(
+        (new_offset_by_line, new_line_by_offset) = apply_changes_to_indexes(
             offset_by_line, line_by_offset, [(target_start_pair[0], target_end_pair[0], new_text)]
         )
+        print(f"OLD LINES: {sorted(offset_by_line.keys())}")
+        print(f"NEW LINES: {sorted(new_offset_by_line.keys())}")
+        # When the size increases, then there should be lines between start and end w/o offsets.
+        self.assertTrue(
+            len(
+                list(
+                    filter(
+                        lambda l: (l > target_start_pair[0]) and (l < target_start_pair[0] + 10),
+                        set(offset_by_line.keys()).difference(set(new_offset_by_line.keys())),
+                    )
+                )
+            )
+            > 0
+        )
+        # When the size increases, then there should be the same number of lines w/offsets.
+        self.assertTrue(len(offset_by_line.keys()) > len(new_offset_by_line.keys()))
 
     def test_block_text(self):
         (offset_by_line, line_by_offset) = line_offsets_to_maps(
