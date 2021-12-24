@@ -558,6 +558,8 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
             server.show_message("GTIRB rewritten successfully")
         else:
             server.show_message("No blocks to rewrite")
+        # Clear modified blocks on a SUCCESSFUL rewrite.  Otherwise retain for another try.
+        del modified_blocks[uri]
     except Exception as e:
         server.show_message(f"assembly error: {e}")
 
@@ -592,6 +594,7 @@ def did_close(ls: GtirbLanguageServer, params: DidCloseTextDocumentParams):
         del current_documents[params.text_document.uri]
         del current_indexes[params.text_document.uri]
         del current_gtirbs[params.text_document.uri]
+        del modified_blocks[params.text_document.uri]
         logger.info("removed document from list of current documents")
 
 
