@@ -439,7 +439,7 @@ def apply_changes_to_indexes(
         new_line_by_offset = {}
 
         lines = sorted(offset_by_line.keys())
-        for line in range(min(lines), max(lines) + growth):
+        for line in range(min(lines), max(lines) + growth + 1):
             new_line = update_line(line)
             new_offset = offset_by_line.get(new_line)
             if new_line and new_offset:
