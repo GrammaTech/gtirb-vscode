@@ -24,6 +24,9 @@ from gtirb_lsp_server.server import (
     block_text,
     offset_to_line,
     block_byte_interval,
+    function_uuid_for_name,
+    function_decompilations,
+    parse_function_name,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -256,3 +259,48 @@ class InitialIndexTestDriver(unittest.TestCase):
         text = block_text(line_by_offset, cb, self.asm)
         self.assertTrue(isinstance(text, str))
         self.assertTrue(len(text.splitlines()) > 1)
+
+    def test_function_uuid_for_name(self):
+        function_uuid = function_uuid_for_name(self.gtirb, "undefined")
+        self.assertIsNone(function_uuid)
+
+        function_uuid = function_uuid_for_name(self.gtirb, "main")
+        self.assertEqual(function_uuid, UUID("6263d7b2-da85-49bd-8f8e-5585417a5500"))
+
+
+class HelloTestDriver(unittest.TestCase):
+    def setUp(self):
+        self.gtirb = gtirb.IR.load_protobuf(DATA_DIR / "hello.gtirb")
+
+    def test_function_decompilations(self):
+        decompilations = function_decompilations(self.gtirb, "undefined")
+        self.assertIsNone(decompilations)
+
+        decompilations = function_decompilations(self.gtirb, "main")
+        text = 'int main() {\n    // 0x401130\n    puts("Hello World\\n");\n    return 0;\n}'
+        expected = f"## Retdec\n```c\n{text}\n```"
+        self.assertEqual(decompilations, expected)
+
+
+class ParseFunctionNameTestDriver(unittest.TestCase):
+    def test_parse_function_name(self):
+        name = parse_function_name('.section .interp ,"a",@progbits')
+        self.assertIsNone(name)
+
+        name = parse_function_name("#===================================")
+        self.assertIsNone(name)
+
+        name = parse_function_name("push RBP              # EA: 0x401690")
+        self.assertIsNone(name)
+
+        name = parse_function_name(".L_402ea0:")
+        self.assertIsNone(name)
+
+        name = parse_function_name(".globl main")
+        self.assertEqual(name, "main")
+
+        name = parse_function_name(".type main, @function")
+        self.assertEqual(name, "main")
+
+        name = parse_function_name("main:")
+        self.assertEqual(name, "main")

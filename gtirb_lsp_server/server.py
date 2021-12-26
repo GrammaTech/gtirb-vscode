@@ -229,6 +229,16 @@ def symbol_for_name(ir: gtirb, name: str) -> Optional[gtirb.Symbol]:
     return next(map(lambda s: s, filter(lambda s: s.name == name, ir.modules[0].symbols)), None)
 
 
+def function_uuid_for_name(ir: gtirb, name: str) -> Optional[uuid.UUID]:
+    """Return the UUID of the function in IR with NAME."""
+    aux_data: gtirb.AuxData = ir.modules[0].aux_data
+    function_names: Dict = aux_data.get("functionNames", gtirb.AuxData({}, "")).data
+    for function_uuid, symbol in function_names.items():
+        if symbol.name == name:
+            return function_uuid
+    return None
+
+
 #
 # chars to strip out so as to leave a line consisting of actual tokens
 delims = ["+", "-", "[", "]", ":", "{", "}", "*", ","]
@@ -740,19 +750,24 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
 @server.feature(HOVER, HoverOptions())
 def get_hover(ls: GtirbLanguageServer, params: HoverParams) -> Optional[Hover]:
     logger.info(f"Hover request received uri: {params.text_document.uri}")
+    ir = current_gtirbs[params.text_document.uri]
     (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
     offset = offset_by_line.get(params.position.line)
-    if offset:
-        auxdata = offset_to_auxdata(current_gtirbs[params.text_document.uri], offset)
-    else:
-        auxdata = None
 
-    if auxdata is None:
-        logger.debug("No auxdata found")
-        return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found"))
-    else:
+    if offset:
+        auxdata = offset_to_auxdata(ir, offset)
         logger.debug(f"Returning auxdata: {auxdata}")
         return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value=auxdata))
+
+    text = server.workspace.get_document(params.text_document.uri).source
+    function_name = parse_function_name(text.splitlines()[params.position.line])
+    if function_name:
+        decompilations = function_decompilations(ir, function_name)
+        logger.debug(f"Returning decompilations: {decompilations}")
+        return Hover(contents=MarkupContent(kind=MarkupKind.Markdown, value=decompilations))
+
+    logger.debug("No auxdata found")
+    return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found"))
 
 
 def offset_indexed_aux_data(ir: gtirb) -> List[str]:
@@ -764,6 +779,40 @@ def offset_indexed_aux_data(ir: gtirb) -> List[str]:
             continue
         results += [name]
     return results
+
+
+def parse_function_name(text: str) -> Optional[str]:
+    """Parse a function name from TEXT, if possible."""
+    logger.debug(f"parse_function_name({text}")
+
+    GLOBL_RE: re.Pattern = re.compile(r"\.globl ([A-Za-z0-9_]+)")
+    TYPE_RE: re.Pattern = re.compile(r"\.type ([A-Za-z0-9_]+), @function")
+    FUNCTION_LABEL_RE: re.Pattern = re.compile(r"([A-Za-z0-9_]+):")
+
+    for regex in [GLOBL_RE, TYPE_RE, FUNCTION_LABEL_RE]:
+        m = regex.match(text)
+        if m:
+            return m.group(1)
+    return None
+
+
+def function_decompilations(ir: gtirb, name: str) -> Optional[str]:
+    """
+    Return the decompilation auxdata associated with the given function NAME in IR
+    as a markdown string.
+    """
+    logger.debug(f"function_name_to_auxdata(IR, {name})")
+
+    result: str = ""
+    aux_data: gtirb.AuxData = ir.modules[0].aux_data
+    function_uuid: uuid.UUID = function_uuid_for_name(ir, name)
+    function_sources: Dict = aux_data.get("functionSources", gtirb.AuxData({}, "")).data
+    function_sources = function_sources.get(function_uuid, {})
+    for annotation_source, text in function_sources.items():
+        if text.strip():
+            result += f"## {annotation_source}\n```c\n{text.strip()}\n```\n\n"
+
+    return result.strip() if result else None
 
 
 def gtirb_tcp_server(host: str, port: int) -> None:
