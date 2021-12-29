@@ -23,6 +23,7 @@ from pygls.lsp.methods import (
 )
 
 from pygls.server import LanguageServer
+from pygls.workspace import Document
 
 from pygls.lsp.types import (
     DefinitionOptions,
@@ -84,10 +85,6 @@ current_gtirbs = {}
 #
 # Indexes, a tuple. [0] is a map from line to Offset, [1] is the inverse.
 current_indexes = {}
-
-#
-# The text in the documents.
-current_documents = {}
 
 #
 # Offsets with pending edits.
@@ -367,11 +364,7 @@ def ensure_index(text_document):
 
     if line_offsets is None:
         logger.info(f"Populating (line-number,offset(UUID,int)) map to JSON file: {jsonfile}")
-        # this document should already be in current_documents, use it if possible
-        if text_document.uri in current_documents:
-            current_lines = current_documents[text_document.uri]
-        else:
-            current_lines = text_document.text.splitlines()
+        current_lines = text_document.text.splitlines()
         line_offsets = get_line_offset(ir, current_lines)
 
         # Store the resulting map into a JSON file.
@@ -391,7 +384,7 @@ async def get_line_from_address(ls, *args):
     document_uri = args[0][0][2]
     address_str = args[0][1]
     logger.info(f"Command: get_line_from_address, uri: {document_uri}")
-    if document_uri not in current_documents:
+    if document_uri not in server.workspace.documents:
         ls.show_message(f" No address mapping for {document_uri}")
         return None
     try:
@@ -405,7 +398,8 @@ async def get_line_from_address(ls, *args):
             element_id=ir.get_by_uuid(block.uuid), displacement=(address - block.address)
         )
         line = current_indexes[document_uri][1].get(offset)
-        text_line = current_documents[document_uri][line]
+        document = server.workspace.get_document(document_uri)
+        text_line = document.source.splitlines()[line]
         if line:
             range = Range(
                 start=Position(line=line, character=0),
@@ -578,8 +572,6 @@ async def did_open(ls: GtirbLanguageServer, params: DidOpenTextDocumentParams):
 
     # This is where to check the extension
     if ext == ".gtasm":
-        current_documents[params.text_document.uri] = params.text_document.text.splitlines()
-        logger.info("Added to document list")
         ensure_index(params.text_document)
         logger.info("finished indexing")
 
@@ -588,8 +580,7 @@ async def did_open(ls: GtirbLanguageServer, params: DidOpenTextDocumentParams):
 def did_close(ls: GtirbLanguageServer, params: DidCloseTextDocumentParams):
     """Text document did close notification."""
     logger.info(f"Text Document Did Close notification, uri: {params.text_document.uri}")
-    if params.text_document.uri in current_documents:
-        del current_documents[params.text_document.uri]
+    if params.text_document.uri in current_indexes:
         del current_indexes[params.text_document.uri]
         del current_gtirbs[params.text_document.uri]
         del modified_blocks[params.text_document.uri]
@@ -600,35 +591,25 @@ def did_close(ls: GtirbLanguageServer, params: DidCloseTextDocumentParams):
 def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optional[Location]:
     """Text document definition request."""
     logger.info(f"Definition request received uri: {params.text_document.uri}")
-    current_lines: StringList = []
-    current_token: str
-    #
-    # Make sure the document is current
-    if (
-        params.text_document.uri in current_documents
-        and params.text_document.uri in current_indexes
-        and params.text_document.uri in current_gtirbs
-    ):
-        current_lines = current_documents[params.text_document.uri]
-        current_token = isolate_token(
-            current_lines[params.position.line], params.position.character
-        )
-        if current_token is None or len(current_token) == 0:
-            ls.show_message(
-                f" no token found for {params.position.line}:{params.position.character}"
-            )
-            return None
-    else:
-        ls.show_message(
-            f" document {params.text_document.uri} is not in the current document store."
-        )
+    current_document: Document = server.workspace.get_document(params.text_document.uri)
+
+    # Make sure the document indexes and gtirb representation are cached
+    if current_document.uri not in current_indexes or current_document.uri not in current_gtirbs:
+        ls.show_message(f"{current_document.uri} is not currently cached.")
         return None
 
-    ir = current_gtirbs[params.text_document.uri]
-    if ir is None:
-        ls.show_message(" document {params.text_document.uri} has no GTIRB.")
+    current_lines: StringList = current_document.source.splitlines()
+    current_token: str = isolate_token(
+        current_lines[params.position.line], params.position.character
+    )
+
+    # Ensure token was found at the given position.
+    if current_token is None or len(current_token) == 0:
+        ls.show_message(f" no token found for {params.position.line}:{params.position.character}")
         return None
-    logger.debug("ir found")
+
+    # Retrieve the gtirb for the URI
+    ir = current_gtirbs[current_document.uri]
 
     symbol = symbol_for_name(ir, current_token)
     if symbol is None:
@@ -636,7 +617,7 @@ def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optiona
         return None
     logger.debug(f"symbol found: {symbol}")
 
-    line = first_line_for_uuid(current_indexes[params.text_document.uri][0], symbol.referent.uuid)
+    line = first_line_for_uuid(current_indexes[current_document.uri][0], symbol.referent.uuid)
     if line is None:
         ls.show_message(f" no line for uuid {symbol.referent}.")
         return None
@@ -646,7 +627,7 @@ def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optiona
     definition_line: str = current_lines[line]
 
     return Location(
-        uri=params.text_document.uri,
+        uri=current_document.uri,
         range=Range(
             start=Position(line=line, character=definition_line.find(current_token)),
             end=Position(
@@ -660,37 +641,29 @@ def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optiona
 def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional[List[Location]]:
     """Text document references request."""
     logger.info(f"References request received uri: {params.text_document.uri}")
-    current_lines: StringList = []
-    current_token: str
-    locations: LocationList = []
-    #
-    # Make sure the document is current
-    if (
-        params.text_document.uri in current_documents
-        and params.text_document.uri in current_indexes
-        and params.text_document.uri in current_gtirbs
-    ):
-        (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
-        current_lines = current_documents[params.text_document.uri]
-        current_token = isolate_token(
-            current_lines[params.position.line], params.position.character
-        )
-        if current_token is None or len(current_token) == 0:
-            ls.show_message(
-                f" no token found for {params.position.line}:{params.position.character}"
-            )
-            return None
-    else:
-        ls.show_message(
-            f" document {params.text_document.uri} is not in the store of current documents."
-        )
+    current_document: Document = server.workspace.get_document(params.text_document.uri)
+
+    # Make sure the document indexes and gtirb representation are cached
+    if current_document.uri not in current_indexes or current_document.uri not in current_gtirbs:
+        ls.show_message(f"{current_document.uri} is not currently cached.")
         return None
 
-    ir = current_gtirbs[params.text_document.uri]
-    if ir is None:
-        ls.show_message(f" document {params.text_document.uri} has no GTIRB.")
+    current_lines: StringList = current_document.source.splitlines()
+    current_token: str = isolate_token(
+        current_lines[params.position.line], params.position.character
+    )
+    locations: LocationList = []
+
+    # Ensure token was found at the given position.
+    if current_token is None or len(current_token) == 0:
+        ls.show_message(f" no token found for {params.position.line}:{params.position.character}")
         return None
-    logger.debug("ir found")
+
+    # Retrieve the gtirb for the URI
+    ir = current_gtirbs[current_document.uri]
+
+    # Retrieve the offsets for the URI
+    (offset_by_line, line_by_offset) = current_indexes[current_document.uri]
 
     # If token is a GTIRB symbol, find references to it,
     # otherwise find references to whatever block the cusor is in
@@ -741,7 +714,7 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
         if token:
             locations.append(
                 Location(
-                    uri=params.text_document.uri,
+                    uri=current_document.uri,
                     range=Range(
                         start=Position(line=line, character=reference_line.find(token)),
                         end=Position(
@@ -753,7 +726,7 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
         else:
             locations.append(
                 Location(
-                    uri=params.text_document.uri,
+                    uri=current_document.uri,
                     range=Range(
                         start=Position(line=line, character=0),
                         end=Position(line=line, character=len(reference_line)),
