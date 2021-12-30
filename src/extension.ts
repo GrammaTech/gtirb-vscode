@@ -11,7 +11,7 @@ import {
 
 import { GtirbEditorProvider } from './gtirbEditor';
 
-import { getAddressAndJump } from './customCommands';
+import { getAddressAndJump, getPathForListing } from './customCommands';
 
 let client: LanguageClient;
 
@@ -127,12 +127,14 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(client.start());
     context.subscriptions.push(GtirbEditorProvider.register(context, pythonPath));
 
-    const disposable = vscode.commands.registerCommand('gtirb-vscode.goToAddress', () => {
-        getAddressAndJump();
-    });
-
-    context.subscriptions.push(disposable);
-
+    context.subscriptions.push(
+        vscode.commands.registerCommand('gtirb-vscode.goToAddress', () => {
+            getAddressAndJump();
+        }),
+        vscode.commands.registerCommand('gtirb-vscode.getPathForListing', (gtirbFile, isa) =>
+            getPathForListing(gtirbFile, isa)
+        )
+    );
 }
 
 

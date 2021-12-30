@@ -19,7 +19,8 @@
     "activationEvents": [
         "onCustomEditor:gtirb-loader.gtirb",
         "onLanguage:gtgas",
-        "onLanguage:gtmips"
+        "onLanguage:gtmips",
+        "onCommand:gtirb-vscode.getPathForListing"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -107,6 +108,10 @@
             {
                 "command": "getLineFromAddress",
                 "title": "Get Line From Address"
+            },
+            {
+                "command": "gtirb-vscode.getPathForListing",
+                "title": "Get listing path for gtirb file"
             }
         ]
     },

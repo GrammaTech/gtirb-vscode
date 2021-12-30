@@ -5,11 +5,13 @@ import subprocess
 
 DEBUG = False
 
+SUPPORTED_ISA = ["x86", "ia32", "x64", "mips", "arm"]
+
 
 def index_gtirb(filepath):
     isa = infer_isa(filepath)
 
-    if isa == "x86" or isa == "x64" or isa == "mips" or isa == "arm":
+    if isa in SUPPORTED_ISA:
         gtirb_file = Path(filepath)
         gtirb_dir = gtirb_file.parent
         cache_dir = gtirb_dir.joinpath(f".vscode.{gtirb_file.name}")

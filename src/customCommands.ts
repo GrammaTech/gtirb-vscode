@@ -1,3 +1,4 @@
+import { basename, join } from 'path';
 import { window, commands, Range, TextEditorRevealType, Selection } from 'vscode';
 import { integer } from 'vscode-languageclient';
 
@@ -53,3 +54,21 @@ export async function getAddressAndJump() {
         }
     });
 }
+
+/* Instruction set architecture of a target binary. */
+export enum ISA {
+    X64 = 'x64',
+    IA32 = 'ia32', X86 = 'x86',
+    ARM = 'arm',  // 32-bit, little endian
+    MIPS = 'mips' // 32-bit, big endian
+}
+
+/* gtirb-vscode cache dir relative to gtirb file */
+const cacheDir = (gtirbFile: string) => `.vscode.${basename(gtirbFile)}`;
+
+/**
+ * Returns the path relative to the gtirb file where the vscode extension
+ * will preferentially look for an existing listing file.
+ */
+export const getPathForListing = (gtirbFile: string, isa: ISA) =>
+    join(cacheDir(gtirbFile), isa, `${basename(gtirbFile, '.gtirb')}.gtasm`);
