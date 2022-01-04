@@ -407,10 +407,11 @@ async def get_line_from_address(ls, *args):
         offset = gtirb.Offset(
             element_id=ir.get_by_uuid(block.uuid), displacement=(address - block.address)
         )
+        # Some blocks may not map to a line. Use the first one that does.
         line = current_indexes[document_uri][1].get(offset)
-        document = server.workspace.get_document(document_uri)
-        text_line = document.source.splitlines()[line]
         if line:
+            document = server.workspace.get_document(document_uri)
+            text_line = document.source.splitlines()[line]
             range = Range(
                 start=Position(line=line, character=0),
                 end=Position(line=line, character=(len(text_line))),
