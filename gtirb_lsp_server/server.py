@@ -384,6 +384,16 @@ def ensure_index(text_document):
     # Create maps from line_uuids going both ways.
     current_indexes[text_document.uri] = line_offsets_to_maps(ir, line_offsets)
 
+def address_to_line(ir: gtirb, line_by_offset: Dict[int, gtirb.Offset], address: int) -> int:
+    for block in ir.modules[0].byte_blocks_on(address):
+        offset = gtirb.Offset(
+            element_id=ir.get_by_uuid(block.uuid), displacement=(address - block.address)
+        )
+        # Some blocks may not map to a line. Use the first one that does.
+        line = line_by_offset.get(offset)
+        if line:
+            return line
+
 
 server = GtirbLanguageServer()
 
@@ -403,21 +413,16 @@ async def get_line_from_address(ls, *args):
         logger.info(f"get_line_from_address: invalid address {address_str}")
         return None
     ir = current_gtirbs[document_uri]
-    for block in ir.modules[0].byte_blocks_on(address):
-        offset = gtirb.Offset(
-            element_id=ir.get_by_uuid(block.uuid), displacement=(address - block.address)
+    line = address_to_line(ir, current_indexes[document_uri][1], address)
+    if line:
+        document = server.workspace.get_document(document_uri)
+        text_line = document.source.splitlines()[line]
+        range = Range(
+            start=Position(line=line, character=0),
+            end=Position(line=line, character=0),
         )
-        # Some blocks may not map to a line. Use the first one that does.
-        line = current_indexes[document_uri][1].get(offset)
-        if line:
-            document = server.workspace.get_document(document_uri)
-            text_line = document.source.splitlines()[line]
-            range = Range(
-                start=Position(line=line, character=0),
-                end=Position(line=line, character=(len(text_line))),
-            )
-            return range
-    # If no line found, send message to UI
+        return range
+    # no line found, send message to UI
     ls.show_message(f" no line found for {address_str}")
     return None
 
@@ -757,8 +762,12 @@ def get_hover(ls: GtirbLanguageServer, params: HoverParams) -> Optional[Hover]:
 
     if offset:
         auxdata = offset_to_auxdata(ir, offset)
-        logger.debug(f"Returning auxdata: {auxdata}")
-        return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value=auxdata))
+        if auxdata:
+            logger.debug(f"Returning auxdata: {auxdata}")
+            return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value=auxdata))
+        else:
+            logger.debug("No auxdata found")
+            return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found"))
 
     text = server.workspace.get_document(params.text_document.uri).source
     function_name = parse_function_name(text.splitlines()[params.position.line])

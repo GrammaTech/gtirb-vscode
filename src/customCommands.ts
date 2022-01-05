@@ -37,20 +37,21 @@ export async function getAddressAndJump() {
         if (range) {
             editor?.revealRange(range, TextEditorRevealType.InCenter);
             line = range.start.line;
-        }
-        const position = editor.selection.active;
-        if (line > position.line) {
-            const moveDown: integer = line - position.line;
-            commands.executeCommand("cursorMove",
-            {
-                to: "down", by:'line', value:moveDown
-            });
-        } else {
-            const moveUp: integer = position.line - line;
-            commands.executeCommand("cursorMove",
-            {
-                to: "up", by:'line', value:moveUp
-            });
+
+            const position = editor.selection.active;
+            if (line > position.line) {
+                const moveDown: integer = line - position.line;
+                commands.executeCommand("cursorMove",
+                {
+                    to: "down", by:'line', value:moveDown
+                });
+            } else {
+                const moveUp: integer = position.line - line;
+                commands.executeCommand("cursorMove",
+                {
+                    to: "up", by:'line', value:moveUp
+                });
+            }
         }
     });
 }

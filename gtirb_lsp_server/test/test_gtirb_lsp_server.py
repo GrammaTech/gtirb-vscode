@@ -27,6 +27,7 @@ from gtirb_lsp_server.server import (
     function_uuid_for_name,
     function_decompilations,
     parse_function_name,
+    address_to_line,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -154,6 +155,8 @@ class InitialIndexTestDriver(unittest.TestCase):
         self.assertTrue(len(offsets) > 0)
         self.assertTrue(isinstance(offsets[0][0], gtirb.Offset))
         self.assertTrue(isinstance(offsets[0][1], gtirb.SymbolicExpression))
+
+    def test_get_line_from_address(self):
 
     def test_get_references_for_symbol(self):
         symbol_name = ".L_4049d9"
