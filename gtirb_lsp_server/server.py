@@ -757,20 +757,21 @@ def get_hover(ls: GtirbLanguageServer, params: HoverParams) -> Optional[Hover]:
     (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
     offset = offset_by_line.get(params.position.line)
 
-    if offset:
+    if offset:  # Get auxdata associated with current offset
         auxdata = offset_to_auxdata(ir, offset)
+        markup_kind = MarkupKind.PlainText
+    else:  # Get function decompilation if possible
+        text = server.workspace.get_document(params.text_document.uri).source
+        function_name = parse_function_name(text.splitlines()[params.position.line])
+        auxdata = function_decompilations(ir, function_name) if function_name else None
+        markup_kind = MarkupKind.Markdown
+
+    if auxdata:
         logger.debug(f"Returning auxdata: {auxdata}")
-        return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value=auxdata))
-
-    text = server.workspace.get_document(params.text_document.uri).source
-    function_name = parse_function_name(text.splitlines()[params.position.line])
-    if function_name:
-        decompilations = function_decompilations(ir, function_name)
-        logger.debug(f"Returning decompilations: {decompilations}")
-        return Hover(contents=MarkupContent(kind=MarkupKind.Markdown, value=decompilations))
-
-    logger.debug("No auxdata found")
-    return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found"))
+        return Hover(contents=MarkupContent(kind=markup_kind, value=auxdata))
+    else:
+        logger.debug("No auxdata found")
+        return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found"))
 
 
 def offset_indexed_aux_data(ir: gtirb) -> List[str]:
