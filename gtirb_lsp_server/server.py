@@ -384,6 +384,7 @@ def ensure_index(text_document):
     # Create maps from line_uuids going both ways.
     current_indexes[text_document.uri] = line_offsets_to_maps(ir, line_offsets)
 
+
 def address_to_line(ir: gtirb, line_by_offset: Dict[int, gtirb.Offset], address: int) -> int:
     for block in ir.modules[0].byte_blocks_on(address):
         offset = gtirb.Offset(
@@ -415,12 +416,8 @@ async def get_line_from_address(ls, *args):
     ir = current_gtirbs[document_uri]
     line = address_to_line(ir, current_indexes[document_uri][1], address)
     if line:
-        document = server.workspace.get_document(document_uri)
-        text_line = document.source.splitlines()[line]
-        range = Range(
-            start=Position(line=line, character=0),
-            end=Position(line=line, character=0),
-        )
+        # only the line number is really used, set character to 0
+        range = Range(start=Position(line=line, character=0), end=Position(line=line, character=0),)
         return range
     # no line found, send message to UI
     ls.show_message(f" no line found for {address_str}")
@@ -762,12 +759,8 @@ def get_hover(ls: GtirbLanguageServer, params: HoverParams) -> Optional[Hover]:
 
     if offset:
         auxdata = offset_to_auxdata(ir, offset)
-        if auxdata:
-            logger.debug(f"Returning auxdata: {auxdata}")
-            return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value=auxdata))
-        else:
-            logger.debug("No auxdata found")
-            return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found"))
+        logger.debug(f"Returning auxdata: {auxdata}")
+        return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value=auxdata))
 
     text = server.workspace.get_document(params.text_document.uri).source
     function_name = parse_function_name(text.splitlines()[params.position.line])

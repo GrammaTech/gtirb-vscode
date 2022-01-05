@@ -157,6 +157,13 @@ class InitialIndexTestDriver(unittest.TestCase):
         self.assertTrue(isinstance(offsets[0][1], gtirb.SymbolicExpression))
 
     def test_get_line_from_address(self):
+        address = int("0x41acaa", 16)
+        expected_line = 27070
+        (offset_by_line, line_by_offset) = line_offsets_to_maps(
+            self.gtirb, get_line_offset(self.gtirb, self.asm)
+        )
+        line = address_to_line(self.gtirb, line_by_offset, address)
+        self.assertTrue(line == expected_line)
 
     def test_get_references_for_symbol(self):
         symbol_name = ".L_4049d9"
