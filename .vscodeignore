@@ -1,10 +1,12 @@
 .vscode/**
 .vscode-test/**
 gtirb_lsp_server/test/**
+gtirb_lsp_server/__pycache__/**
+gtirb_lsp_server/.pytest_cache/**
+gtirb_lsp_server/gtirb_lsp_server.egg-info/**
 out/test/**
 
 src/**
-__pycache__
 .gitignore
 .yarnrc
 .coveragerc
