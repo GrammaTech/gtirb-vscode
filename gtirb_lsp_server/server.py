@@ -6,6 +6,7 @@ import os
 import re
 import uuid
 from typing import Dict, List, Optional, Set, Tuple, Union
+from urllib.parse import urlparse, unquote
 
 import gtirb
 import gtirb_functions
@@ -334,10 +335,10 @@ class UUIDEncoder(json.JSONEncoder):
 
 def ensure_index(text_document):
     logger.debug(f"ensure_index({text_document.uri})")
-    path_list = text_document.uri.split("//")
+    parsed = urlparse(text_document.uri)
 
-    if len(path_list) > 1 and path_list[0] == "file:":
-        asmfile = path_list[1]
+    if parsed.scheme == "file":
+        asmfile = unquote(parsed.path)
         cachedir = os.path.dirname(os.path.dirname(asmfile))
         cachedir_base = os.path.basename(cachedir)
         if cachedir_base.startswith(".vscode."):
