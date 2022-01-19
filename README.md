@@ -38,3 +38,8 @@ And start vscode. The extension will start up automatically whenever you open a 
 The file setup.py provides build information to build the LSP server with. To build a wheel that can be installed with pip:
 - python3 setup.py build
 - python3 -m build --wheel
+
+The LSP server optionally supports some limited binary rewriting capability. Some additional python packages are needed, to install these with pip go to the gtirb_lsp_server directory and run:
+- pip3 install -r requirements-rewriting.txt
+Or, to install the GTIRB LSP server and dependencies, including packages needed for rewriting capability:
+- pip3 install -e .[rewriting]

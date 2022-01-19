@@ -9,9 +9,6 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 from urllib.parse import urlparse, unquote
 
 import gtirb
-import gtirb_functions
-import gtirb_rewriting
-import mcasm
 
 from pygls.lsp.methods import (
     DEFINITION,
@@ -64,8 +61,6 @@ from pygls.lsp.types import (
 #     return tracefunc_closure
 
 
-X86Syntax = mcasm.X86Syntax
-
 logger = logging.getLogger(__name__)
 
 DEFAULT_PORT = 3036
@@ -92,14 +87,25 @@ current_indexes = {}
 modified_blocks = {}
 
 
-# Local class allows addition  of a configuration section
+# The LSP server object
+# This is a customizatino of the pygls language server, adding
+# configuration section, custom commands, and properties.
 # See pygls example: json language server
 class GtirbLanguageServer(LanguageServer):
+    """GTIRB LSP Server."""
+
     CONFIGURATION_SECTION = "gtirbServer"
     CMD_GET_LINE_FROM_ADDRESS = "getLineFromAddress"
+    rewrite_enabled = True
 
     def __init__(self):
         super().__init__()
+
+    def can_rewrite(self):
+        return self.rewrite_enabled
+
+    def disable_rewrite(self):
+        self.rewrite_enabled = False
 
 
 # Symbolic references may appear at addresses not represented by offsets in the
@@ -399,6 +405,15 @@ def address_to_line(ir: gtirb, line_by_offset: Dict[int, gtirb.Offset], address:
 
 server = GtirbLanguageServer()
 
+try:
+    import gtirb_functions
+    import gtirb_rewriting
+    import mcasm
+
+    X86Syntax = mcasm.X86Syntax
+except ImportError:
+    server.disable_rewrite()
+
 
 @server.command(GtirbLanguageServer.CMD_GET_LINE_FROM_ADDRESS)
 async def get_line_from_address(ls, *args):
@@ -513,68 +528,74 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
     """Text document did save notification."""
     uri = params.text_document.uri
     logger.info(f"Text Document Did Save notification, uri: {uri}")
-    workspace = server.workspace
-    document = workspace.get_document(uri)
-    logger.debug(f"document {document} with {len(document.lines)} lines")
 
-    if (uri not in modified_blocks) or len(modified_blocks[uri]) == 0:
-        server.show_message(f"no pending modifications to {uri}")
-        return None
+    #
+    # Go ahead with rewriting procedure only if server has enabled rewriting
+    #
+    if server.can_rewrite():
 
-    if uri not in current_gtirbs:
-        server.show_message(f"no GTIRB found for {uri}")
-        return None
-    ir = current_gtirbs[uri]
+        workspace = server.workspace
+        document = workspace.get_document(uri)
+        logger.debug(f"document {document} with {len(document.lines)} lines")
 
-    logger.info(f"applying {len(modified_blocks[uri])} modifications to {uri}")
+        if (uri not in modified_blocks) or len(modified_blocks[uri]) == 0:
+            server.show_message(f"no pending modifications to {uri}")
+            return None
 
-    functions = gtirb_functions.Function.build_functions(ir.modules[0])
-    blocks_to_functions = {block: func for func in functions for block in func.get_all_blocks()}
-    ctx = gtirb_rewriting.RewritingContext(ir.modules[0], functions)
+        if uri not in current_gtirbs:
+            server.show_message(f"no GTIRB found for {uri}")
+            return None
+        ir = current_gtirbs[uri]
 
-    def literal_patch(asm: str) -> gtirb_rewriting.Patch:
-        """
-        Creates a patch from a literal string. The patch will have an empty
-        constraints object.
-        """
+        logger.info(f"applying {len(modified_blocks[uri])} modifications to {uri}")
 
-        @gtirb_rewriting.patch_constraints(x86_syntax=X86Syntax.INTEL)
-        def patch(ctx):
-            return asm
+        functions = gtirb_functions.Function.build_functions(ir.modules[0])
+        blocks_to_functions = {block: func for func in functions for block in func.get_all_blocks()}
+        ctx = gtirb_rewriting.RewritingContext(ir.modules[0], functions)
 
-        return gtirb_rewriting.Patch.from_function(patch)
+        def literal_patch(asm: str) -> gtirb_rewriting.Patch:
+            """
+            Creates a patch from a literal string. The patch will have an empty
+            constraints object.
+            """
 
-    blocks: List[gtirb.ByteBlock] = []
-    for block in modified_blocks[uri]:
-        asm = block_text(current_indexes[uri][1], block, document.lines)
+            @gtirb_rewriting.patch_constraints(x86_syntax=X86Syntax.INTEL)
+            def patch(ctx):
+                return asm
 
-        if asm == "":
-            logger.info("TODO: implement block deletion in gtirb-rewriting")
-            server.show_message(f"skipping {block} with empty assembly")
-        else:
-            logger.debug(f"rewriting {block} to asm:\n{asm}")
-            blocks += [block]
-            ctx.replace_at(blocks_to_functions[block], block, 0, block.size, literal_patch(asm))
+            return gtirb_rewriting.Patch.from_function(patch)
 
-    try:
-        if len(blocks) > 0:
-            ctx.apply()
-            # FIXME: This will not work with remote operation.
-            ir.save_protobuf(uri.split("//")[1] + ".gtirb")
-            server.show_message("GTIRB rewritten successfully")
-        else:
-            server.show_message("No blocks to rewrite")
-        # Clear modified blocks on a SUCCESSFUL rewrite.  Otherwise retain for another try.
-        del modified_blocks[uri]
-    except Exception as e:
-        server.show_message(f"assembly error: {e}")
+        blocks: List[gtirb.ByteBlock] = []
+        for block in modified_blocks[uri]:
+            asm = block_text(current_indexes[uri][1], block, document.lines)
 
-    # TODO:
-    # - Update the text with gtirb-pprinter
-    #   - Return updated text
-    #   - Distinguish between modified comments and modified assembly
-    #   - Improved warnings when trying to delete blocks
-    #   - Retain comments (in a new AuxData in the GTIRB)
+            if asm == "":
+                logger.info("TODO: implement block deletion in gtirb-rewriting")
+                server.show_message(f"skipping {block} with empty assembly")
+            else:
+                logger.debug(f"rewriting {block} to asm:\n{asm}")
+                blocks += [block]
+                ctx.replace_at(blocks_to_functions[block], block, 0, block.size, literal_patch(asm))
+
+        try:
+            if len(blocks) > 0:
+                ctx.apply()
+                # FIXME: This will not work with remote operation.
+                ir.save_protobuf(uri.split("//")[1] + ".gtirb")
+                server.show_message("GTIRB rewritten successfully")
+            else:
+                server.show_message("No blocks to rewrite")
+            # Clear modified blocks on a SUCCESSFUL rewrite.  Otherwise retain for another try.
+            del modified_blocks[uri]
+        except Exception as e:
+            server.show_message(f"assembly error: {e}")
+
+        # TODO:
+        # - Update the text with gtirb-pprinter
+        #   - Return updated text
+        #   - Distinguish between modified comments and modified assembly
+        #   - Improved warnings when trying to delete blocks
+        #   - Retain comments (in a new AuxData in the GTIRB)
 
 
 @server.feature(TEXT_DOCUMENT_DID_OPEN)

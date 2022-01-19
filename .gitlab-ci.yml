@@ -16,6 +16,11 @@ check-format:
     - pip3 install pre-commit
     - pre-commit run --all-files --show-diff-on-failure
 
+#
+# Test that not enabling rewriting works OK:
+# stable-18 and unstable-20: enable rewriting
+# unstable-18 and stable-20: do not enable rewriting
+
 test-stable-18:
   stage: test
   image: $CI_REGISTRY/rewriting/ddisasm/ubuntu18
@@ -27,7 +32,7 @@ test-stable-18:
     - pip3 install --upgrade pip
     - cd gtirb_lsp_server
     - pip3 install -r requirements-dev.txt
-    - pip3 install -e .
+    - pip3 install -e .[rewriting]
     - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW
 
 test-unstable-18:
@@ -67,5 +72,5 @@ test-unstable-20:
     - apt-get install -y gtirb-pprinter ddisasm
     - cd gtirb_lsp_server
     - pip3 install -r requirements-dev.txt
-    - pip3 install -e . --pre --extra-index-url "$EXTRA_INDEX_URL"
+    - pip3 install -e .[rewriting] --pre --extra-index-url "$EXTRA_INDEX_URL"
     - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW

@@ -31,13 +31,7 @@ setuptools.setup(
     author_email="gtirb@grammatech.com",
     description="LSP server for GTIRB",
     packages=setuptools.find_packages(),
-    install_requires=[
-        "gtirb-rewriting",
-        "mcasm",
-        "gtirb-functions",
-        "gtirb >= 1.10.4",
-        "pygls",
-        "packaging",
-    ],
+    install_requires=["gtirb >= 1.10.4", "pygls", "packaging"],
+    extras_require={"rewriting": ["gtirb-rewriting", "mcasm", "gtirb-functions"]},
     classifiers=["Programming Language :: Python :: 3"],
 )
