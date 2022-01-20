@@ -345,6 +345,9 @@ def ensure_index(text_document):
 
     if parsed.scheme == "file":
         asmfile = unquote(parsed.path)
+        # Remove extra leading slash in windows paths
+        if asmfile.startswith("/") and ":" in asmfile:
+            asmfile = asmfile[1:]
         cachedir = os.path.dirname(os.path.dirname(asmfile))
         cachedir_base = os.path.basename(cachedir)
         if cachedir_base.startswith(".vscode."):
@@ -411,7 +414,9 @@ try:
     import mcasm
 
     X86Syntax = mcasm.X86Syntax
-except ImportError:
+except Exception as inst:
+    logger.info(inst)
+    logger.info("Disabling rewriting.")
     server.disable_rewrite()
 
 
@@ -647,7 +652,7 @@ def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optiona
     ir = current_gtirbs[current_document.uri]
 
     symbol = symbol_for_name(ir, current_token)
-    if symbol is None:
+    if symbol is None or symbol.referent is None:
         ls.show_message(f" symbol for {current_token} not found.")
         return None
     logger.debug(f"symbol found: {symbol}")
@@ -706,6 +711,10 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
     if symbol is None:
         reference_line = params.position.line
     else:
+        # Cover the case of a symbol that has no referent
+        if symbol.referent is None:
+            ls.show_message(f" symbol for {current_token} not found.")
+            return None
         reference_line = first_line_for_uuid(offset_by_line, symbol.referent.uuid)
 
     offset = offset_by_line.get(reference_line)
