@@ -4,6 +4,7 @@ variables:
 stages:
     - check-format
     - test
+    - export
 
 default:
   image: python:3.7-slim
@@ -74,3 +75,23 @@ test-unstable-20:
     - pip3 install -r requirements-dev.txt
     - pip3 install -e .[rewriting] --pre --extra-index-url "$EXTRA_INDEX_URL"
     - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW
+
+export_lsp:
+  stage: export
+  script:
+    - pip install -r gtirb_lsp_server/requirements-dev.txt
+    - python3 gtirb_lsp_server/setup.py bdist_wheel --dist-dir=$CI_PROJECT_DIR/dist
+    - VERSION=$(python3 -c "from imp import load_source; pkginfo = load_source('pkginfo.version', 'gtirb_lsp_server/version.py'); print(pkginfo.__version__)")
+    - PKGNAME=$(python3 -c "from imp import load_source; pkginfo = load_source('pkginfo.version', 'gtirb_lsp_server/version.py'); print(pkginfo.__packagename__)")
+    - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ && "$CI_COMMIT_REF_NAME" =~ ^release-.* ]]; then exit 1; fi
+    # this job is not using $CI_JOB_TOKEN because it only has read access
+    # https://gitlab.com/gitlab-org/gitlab/-/issues/35067
+    # this job is also not using $CI_DEPLOY_USER and $CI_DEPLOY_PASSWORD because it only has write access
+    - if [[ "$CI_COMMIT_BRANCH" == "master" ]]; then
+        ls $CI_PROJECT_DIR/dist/*.whl | xargs $CI_PROJECT_DIR/delete_remote_packages.py $GL_PKG_API_TOKEN;
+      fi
+    - sed "s/password = <access token>/password = $GL_PKG_API_TOKEN/" $CI_PROJECT_DIR/.pypirc > ~/.pypirc
+    - python3 -m twine upload --verbose --repository repypi $CI_PROJECT_DIR/dist/*.whl
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'

@@ -21,8 +21,11 @@
 # endorsement should be inferred.
 import imp
 import setuptools
+import os
 
-version = imp.load_source("pkginfo.version", "version.py").__version__
+THISDIR = os.path.dirname(os.path.realpath(__file__))
+
+version = imp.load_source("pkginfo.version", os.path.join(THISDIR, "version.py")).__version__
 
 setuptools.setup(
     name="gtirb-lsp-server",
