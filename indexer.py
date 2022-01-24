@@ -1,15 +1,21 @@
 import sys
+import gtirb
 from pathlib import Path
-from get_isa import infer_isa
 import subprocess
 
 DEBUG = False
 
-SUPPORTED_ISA = ["x86", "ia32", "x64", "mips", "arm"]
+SUPPORTED_ISA = ["ia32", "x64", "mips32", "mips64", "arm"]
+
+
+def get_isa(filename):
+    ir = gtirb.IR.load_protobuf(filename)
+    module = next(iter(ir.modules))
+    return str(module.isa).lower().split(".")[1]
 
 
 def index_gtirb(filepath):
-    isa = infer_isa(filepath)
+    isa = get_isa(filepath)
 
     if isa in SUPPORTED_ISA:
         gtirb_file = Path(filepath)

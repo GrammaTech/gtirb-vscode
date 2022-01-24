@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getNonce } from './util';
 import { Disposable } from './dispose';
 import * as path from 'path';
+import { ISA } from './customCommands';
 
 import * as cp from 'child_process';
 import * as fs from 'fs';
@@ -44,7 +45,7 @@ class GtirbDocument extends Disposable implements vscode.CustomDocument {
         const parsedPath = path.parse(this._uri.fsPath);
         const cachePath = path.join(parsedPath.dir, '.vscode.'.concat(parsedPath.base));
 
-        const isas = ['x64', 'mips', 'arm'];
+        const isas = Object.values(ISA);
         const asms = isas.map(isa =>
             path.join(cachePath, isa, parsedPath.name.concat('.gtasm'))
         );
@@ -102,19 +103,10 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 
         console.log (`extension path: ${this.myPath}`);
         const path: string = uri.fsPath;
-        const x64AssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtx64'));
-        const x64JsonFile: vscode.Uri = vscode.Uri.file(x64AssemblyFile.fsPath.concat('.json'));
+        const assemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtasm'));
+        const jsonFile: vscode.Uri = vscode.Uri.file(assemblyFile.fsPath.concat('.json'));
 
-        const armAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtarm'));
-        const armJsonFile: vscode.Uri = vscode.Uri.file(armAssemblyFile.fsPath.concat('.json'));
-
-        const mipsAssemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtmips'));
-        const mipsJsonFile: vscode.Uri = vscode.Uri.file(mipsAssemblyFile.fsPath.concat('.json'));
-
-        // This is where I have been calling indexer, maybe with wait, maybe not
-        if ((fs.existsSync(x64JsonFile.fsPath) && fs.existsSync(x64JsonFile.fsPath))
-            || (fs.existsSync(mipsJsonFile.fsPath) && fs.existsSync(mipsJsonFile.fsPath))
-            || (fs.existsSync(armJsonFile.fsPath) && fs.existsSync(armJsonFile.fsPath))) {
+        if (fs.existsSync(assemblyFile.fsPath) && fs.existsSync(jsonFile.fsPath)) {
             console.log("reusing existing assembly and index files.");
         } else {
             await execFile(this.pythonPath, `${this.myPath}/indexer.py`, path);

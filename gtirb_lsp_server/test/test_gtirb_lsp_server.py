@@ -154,7 +154,7 @@ class InitialIndexTestDriver(unittest.TestCase):
         offsets = list(offsets_at_references(self.gtirb, references))
         self.assertTrue(len(offsets) > 0)
         self.assertTrue(isinstance(offsets[0][0], gtirb.Offset))
-        self.assertTrue(isinstance(offsets[0][1], gtirb.SymbolicExpression))
+        self.assertTrue(isinstance(offsets[0][1], gtirb.Symbol))
 
     def test_get_line_from_address(self):
         address = int("0x41acaa", 16)
@@ -179,13 +179,13 @@ class InitialIndexTestDriver(unittest.TestCase):
         offset = offset_by_line[referent_line]
         self.assertTrue(offset is not None)
         references = list(symbolic_references(self.gtirb, offset.element_id.references))
-        offsets_and_symbolic_expressions = offsets_at_references(self.gtirb, references)
+        offsets_and_referenced_symbols = offsets_at_references(self.gtirb, references)
         reference_lines = list(
             filter(
                 lambda it: isinstance(it, int),
                 map(
                     lambda off: line_by_offset.get(off),
-                    map(lambda off_and_se: off_and_se[0], offsets_and_symbolic_expressions,),
+                    map(lambda off_and_se: off_and_se[0], offsets_and_referenced_symbols,),
                 ),
             )
         )

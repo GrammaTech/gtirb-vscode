@@ -59,9 +59,9 @@ export async function getAddressAndJump() {
 /* Instruction set architecture of a target binary. */
 export enum ISA {
     X64 = 'x64',
-    IA32 = 'ia32', X86 = 'x86',
+    IA32 = 'ia32',
     ARM = 'arm',  // 32-bit, little endian
-    MIPS = 'mips' // 32-bit, big endian
+    MIPS32 = 'mips32' // 32-bit, big endian
 }
 
 /* gtirb-vscode cache dir relative to gtirb file */

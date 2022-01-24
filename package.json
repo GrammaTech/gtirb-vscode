@@ -45,7 +45,8 @@
                 ],
                 "filenamePatterns": [
                     "*.gtasm",
-                    "*x64*"
+                    "*x64*",
+                    "*ia32*"
                 ],
                 "extensions": [
                     ".gtasm"

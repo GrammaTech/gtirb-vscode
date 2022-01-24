@@ -149,9 +149,14 @@ def offset_to_successors(ir: gtirb, offset: gtirb.Offset) -> Optional[List[gtirb
     return map(lambda edge: gtirb.Offset(edge.target, 0), ir.cfg.out_edges(offset.element_id))
 
 
-def all_symbolic_expressions(ir: gtirb) -> Set[Tuple[int, gtirb.SymbolicExpression]]:
+def all_symbolic_expression_symbols(ir: gtirb) -> Set[Tuple[int, gtirb.Symbol]]:
     return {
-        ((byte_interval.address + symbolic_expression[0]), symbolic_expression[1])
+        (
+            (byte_interval.address + symbolic_expression[0]),
+            symbolic_expression[1].symbol
+            if isinstance(symbolic_expression[1], gtirb.symbolicexpression.SymAddrConst)
+            else symbolic_expression[1].symbol1,
+        )
         for byte_interval in ir.modules[0].byte_intervals
         for symbolic_expression in byte_interval.symbolic_expressions.items()
     }
@@ -159,25 +164,25 @@ def all_symbolic_expressions(ir: gtirb) -> Set[Tuple[int, gtirb.SymbolicExpressi
 
 def symbolic_references(
     ir: gtirb, symbols: Union[gtirb.Symbol, List[gtirb.Symbol]]
-) -> List[Tuple[int, gtirb.SymbolicExpression]]:
+) -> List[Tuple[int, gtirb.Symbol]]:
     if isinstance(symbols, gtirb.Symbol):
         uuid = symbols.uuid
-        return filter(lambda pair: pair[1].symbol.uuid == uuid, all_symbolic_expressions(ir))
+        return filter(lambda pair: pair[1].uuid == uuid, all_symbolic_expression_symbols(ir))
     else:
         uuids = list(map(lambda s: s.uuid, symbols))
-        return filter(lambda pair: pair[1].symbol.uuid in uuids, all_symbolic_expressions(ir))
+        return filter(lambda pair: pair[1].uuid in uuids, all_symbolic_expression_symbols(ir))
 
 
 def offsets_at_references(
-    ir: gtirb, references: List[Tuple[int, gtirb.SymbolicExpression]]
-) -> List[Tuple[gtirb.Offset, gtirb.SymbolicExpression]]:
+    ir: gtirb, references: List[Tuple[int, gtirb.Symbol]]
+) -> List[Tuple[gtirb.Offset, gtirb.Symbol]]:
     results = []
-    for (address, symbolic_expression) in references:
+    for (address, symbol) in references:
         for block in ir.modules[0].byte_blocks_on(address):
             results.append(
                 (
                     gtirb.Offset(element_id=block, displacement=((address - block.address) - 1)),
-                    symbolic_expression,
+                    symbol,
                 )
             )
     return results
@@ -252,7 +257,7 @@ def function_uuid_for_name(ir: gtirb, name: str) -> Optional[uuid.UUID]:
 
 #
 # chars to strip out so as to leave a line consisting of actual tokens
-delims = ["+", "-", "[", "]", ":", "{", "}", "*", ","]
+delims = ["+", "-", "[", "]", ":", "{", "}", "*", ",", "(", ")"]
 
 
 def replace_delims(line):
@@ -680,7 +685,11 @@ def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optiona
     ir = current_gtirbs[current_document.uri]
 
     symbol = symbol_for_name(ir, current_token)
-    if symbol is None or symbol.referent is None:
+    if (
+        symbol is None
+        or symbol.referent is None
+        or isinstance(symbol.referent, gtirb.block.ProxyBlock)
+    ):
         ls.show_message(f" symbol for {current_token} not found.")
         return None
     logger.debug(f"symbol found: {symbol}")
@@ -736,7 +745,9 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
     # If token is a GTIRB symbol, find references to it,
     # otherwise find references to whatever block the cusor is in
     symbol = symbol_for_name(ir, current_token)
-    if symbol is None:
+    if symbol is None or (
+        symbol.referent is not None and isinstance(symbol.referent, gtirb.block.ProxyBlock)
+    ):
         reference_line = params.position.line
     else:
         # Cover the case of a symbol that has no referent
@@ -753,36 +764,36 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
 
     references = list(symbolic_references(ir, offset.element_id.references))
     if len(references) == 0:
-        ls.show_message(f" no references found for {offset}.")
+        ls.show_message(f" no references found for line {reference_line}.")
         return None
     logger.debug(f"references found: {references}")
 
-    offsets_and_symbolic_expressions = offsets_at_references(ir, references)
-    if len(offsets_and_symbolic_expressions) == 0:
+    offsets_and_referenced_symbols = offsets_at_references(ir, references)
+    if len(offsets_and_referenced_symbols) == 0:
         ls.show_message(f" no offsets found for {references}.")
         return None
-    logger.debug(f"offsets found: {offsets_and_symbolic_expressions}")
+    logger.debug(f"offsets found: {offsets_and_referenced_symbols}")
 
-    lines_and_symbolic_expressions = list(
+    # This is now lines and symbols
+    lines_and_referenced_symbols = list(
         filter(
             lambda it: isinstance(it[0], int),
             map(
                 lambda off_and_se: (offset_to_line(line_by_offset, off_and_se[0]), off_and_se[1],),
-                offsets_and_symbolic_expressions,
+                offsets_and_referenced_symbols,
             ),
         )
     )
-    if len(lines_and_symbolic_expressions) == 0:
-        ls.show_message(f" no lines for offsets {offsets_and_symbolic_expressions}.")
+    if len(lines_and_referenced_symbols) == 0:
+        ls.show_message(f" no lines for offsets {offsets_and_referenced_symbols}.")
         return None
-    logger.debug(f"lines found: {lines_and_symbolic_expressions}")
+    logger.debug(f"lines found: {lines_and_referenced_symbols}")
 
-    for (line, symbolic_expression) in lines_and_symbolic_expressions:
+    for (line, symbol) in lines_and_referenced_symbols:
         reference_line: str = current_lines[line]
         token = None
-        for sym in symbolic_expression.symbols:
-            if reference_line.find(sym.name):
-                token = sym.name
+        if reference_line.find(symbol.name) > 0:
+            token = symbol.name
         if token:
             locations.append(
                 Location(
