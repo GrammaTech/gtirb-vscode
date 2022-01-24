@@ -20,7 +20,8 @@
         "onCustomEditor:gtirb-loader.gtirb",
         "onLanguage:gtgas",
         "onLanguage:gtmips",
-        "onCommand:gtirb-vscode.getPathForListing"
+        "onCommand:gtirb-vscode.getPathForListing",
+        "onCommand:gtirbGetAddressOfSymbol"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -101,14 +102,30 @@
                 "title": "Go To Address"
             },
             {
-                "command": "getLineFromAddress",
+                "command": "gtirbGetLineFromAddress",
                 "title": "Get Line From Address"
+            },
+            {
+                "command": "gtirbGetAddressOfSymbol",
+                "title": "Get the address of a symbol"
             },
             {
                 "command": "gtirb-vscode.getPathForListing",
                 "title": "Get listing path for gtirb file"
             }
-        ]
+        ],
+        "menus": {
+          "commandPalette": [
+            {
+                "command": "gtirbGetLineFromAddress",
+                "when": "inDebugMode"
+            },
+            {
+                "command": "gtirbGetAddressOfSymbol",
+                "when": "inDebugMode"
+            }
+         ]
+       }
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",

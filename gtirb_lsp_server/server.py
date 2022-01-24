@@ -95,7 +95,11 @@ class GtirbLanguageServer(LanguageServer):
     """GTIRB LSP Server."""
 
     CONFIGURATION_SECTION = "gtirbServer"
-    CMD_GET_LINE_FROM_ADDRESS = "getLineFromAddress"
+    # Custom commands.
+    # These will be registered with the client when it connects with the server.
+    # To be available to the client they must be listed in the manifest.
+    CMD_GET_LINE_FROM_ADDRESS = "gtirbGetLineFromAddress"
+    CMD_GET_ADDRESS_OF_SYMBOL = "gtirbGetAddressOfSymbol"
     rewrite_enabled = True
 
     def __init__(self):
@@ -443,6 +447,30 @@ async def get_line_from_address(ls, *args):
     # no line found, send message to UI
     ls.show_message(f" no line found for {address_str}")
     return None
+
+
+@server.command(GtirbLanguageServer.CMD_GET_ADDRESS_OF_SYMBOL)
+async def get_address_of_symbol(ls, *args):
+    """Get the address of a symbol"""
+    document_uri = args[0][0][2]
+    symbol_name = args[0][1]
+    logger.info(f"Command: get_address_of_symbol, uri: {document_uri}")
+    if document_uri not in server.workspace.documents:
+        ls.show_message(f" No address mapping for {document_uri}")
+        return None
+    ir = current_gtirbs[document_uri]
+    symbol = symbol_for_name(ir, symbol_name)
+    if (
+        symbol is None
+        or symbol.referent is None
+        or isinstance(symbol.referent, gtirb.block.ProxyBlock)
+    ):
+        # no address available, send message to UI
+        ls.show_message(f"  - {symbol_name} has no referent!")
+        return None
+
+    block = symbol.referent
+    return hex(block.address)
 
 
 def apply_changes_to_indexes(
