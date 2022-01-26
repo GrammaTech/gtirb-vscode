@@ -95,3 +95,29 @@ export_lsp:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
+
+build_vsix:
+  stage: test
+  image: node:latest
+  script:
+    - npm install
+    - npm install -g vsce
+    - vsce package
+  artifacts:
+    expire_in: 2 hrs
+    paths:
+      - gtirb-vscode-0.0.1.vsix
+
+export_vsix:
+  stage: export
+  image: python:3.7-slim
+  script:
+    - apt-get update -y
+    - apt-get install -y curl
+    - PACKAGENAME='gtirb-vscode'
+    - VERSION=$(python3 -c "import json; f = open('package.json', 'r'); extinfo = json.load(f); f.close(); print(extinfo['version'])")
+    - curl --header "JOB-TOKEN:$CI_JOB_TOKEN" --upload-file ${PACKAGENAME}-${VERSION}.vsix ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGENAME}/${VERSION}/${PACKAGENAME}-${VERSION}.vsix
+  dependencies:
+    - build_vsix
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
