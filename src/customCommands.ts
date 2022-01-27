@@ -32,7 +32,7 @@ export async function getAddressAndJump() {
         return;
     }
     let line: integer = -1;
-    await commands.executeCommand('getLineFromAddress', mydoc, result).then((range: Range|any) =>
+    await commands.executeCommand('gtirbGetLineFromAddress', mydoc.toString(), result).then((range: Range|any) =>
     {
         if (range) {
             editor?.revealRange(range, TextEditorRevealType.InCenter);

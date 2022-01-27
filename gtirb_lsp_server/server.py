@@ -432,7 +432,7 @@ except Exception as inst:
 @server.command(GtirbLanguageServer.CMD_GET_LINE_FROM_ADDRESS)
 async def get_line_from_address(ls, *args):
     """Get the line number for an address for a document"""
-    document_uri = args[0][0].external
+    document_uri = args[0][0]
     address_str = args[0][1]
     logger.info(f"Command: get_line_from_address, uri: {document_uri}")
     if document_uri not in server.workspace.documents:
@@ -457,7 +457,7 @@ async def get_line_from_address(ls, *args):
 @server.command(GtirbLanguageServer.CMD_GET_ADDRESS_OF_SYMBOL)
 async def get_address_of_symbol(ls, *args):
     """Get the address of a symbol"""
-    document_uri = args[0][0].external
+    document_uri = args[0][0]
     symbol_name = args[0][1]
     logger.info(f"Command: get_address_of_symbol, uri: {document_uri}")
     if document_uri not in server.workspace.documents:
