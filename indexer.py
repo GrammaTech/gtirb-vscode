@@ -23,7 +23,7 @@ def index_gtirb(filepath):
         cache_dir = gtirb_dir.joinpath(f".vscode.{gtirb_file.name}")
         gtirb_base = gtirb_file.stem
         isa_dir = cache_dir.joinpath(isa)
-        asm_file = isa_dir.joinpath(f"{gtirb_base}.gtasm")
+        asm_file = isa_dir.joinpath(f"{gtirb_base}.view")
 
         if DEBUG:
             lines = [

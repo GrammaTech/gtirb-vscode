@@ -43,7 +43,7 @@ class InitialIndexTestDriver(unittest.TestCase):
     def setUp(self):
         self.gtirb_path = DATA_DIR / "leafnode.gtirb"
         self.gtirb = gtirb.IR.load_protobuf(self.gtirb_path)
-        self.asm_path = DATA_DIR / "leafnode.gtasm"
+        self.asm_path = DATA_DIR / "leafnode.view"
         self.asmtext = slurp(self.asm_path)
         self.asm = self.asmtext.splitlines()
 

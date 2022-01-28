@@ -47,7 +47,7 @@ class GtirbDocument extends Disposable implements vscode.CustomDocument {
 
         const isas = Object.values(ISA);
         const asms = isas.map(isa =>
-            path.join(cachePath, isa, parsedPath.name.concat('.gtasm'))
+            path.join(cachePath, isa, parsedPath.name.concat('.view'))
         );
 
         // Wait for text document
@@ -103,7 +103,7 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
 
         console.log (`extension path: ${this.myPath}`);
         const path: string = uri.fsPath;
-        const assemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.gtasm'));
+        const assemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.view'));
         const jsonFile: vscode.Uri = vscode.Uri.file(assemblyFile.fsPath.concat('.json'));
 
         if (fs.existsSync(assemblyFile.fsPath) && fs.existsSync(jsonFile.fsPath)) {

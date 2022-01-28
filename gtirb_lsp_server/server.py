@@ -640,13 +640,13 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
 async def did_open(ls: GtirbLanguageServer, params: DidOpenTextDocumentParams):
     """Text document did open notification."""
     logger.info(f"Text Document Did Open notification, uri: {params.text_document.uri}")
-    splitpath = os.path.splitext(params.text_document.uri)
-    ext = splitpath[1]
+    ext = os.path.splitext(params.text_document.uri)[1]
 
     # This is where to check the extension
-    if ext == ".gtasm":
+    if ext == ".view":
         ensure_index(params.text_document)
-        logger.info("finished indexing")
+        filename = os.path.split(params.text_document.uri)[1]
+        ls.show_message(f"{filename} indexing completed.")
 
 
 @server.feature(TEXT_DOCUMENT_DID_CLOSE)

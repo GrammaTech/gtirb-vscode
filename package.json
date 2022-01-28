@@ -44,12 +44,12 @@
                     "gtgas"
                 ],
                 "filenamePatterns": [
-                    "*.gtasm",
+                    "*.view",
                     "*x64*",
                     "*ia32*"
                 ],
                 "extensions": [
-                    ".gtasm"
+                    ".view"
                 ],
                 "configuration": "./gtgas-language-configuration.json"
             },
@@ -60,11 +60,11 @@
                     "gtmips"
                 ],
                 "filenamePatterns": [
-                    "*.gtasm",
+                    "*.view",
                     "*mips*"
                 ],
                 "extensions": [
-                    ".gtasm"
+                    ".view"
                 ],
                 "configuration": "./gtmips-language-configuration.json"
             }

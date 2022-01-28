@@ -72,4 +72,4 @@ const cacheDir = (gtirbFile: string) => `.vscode.${basename(gtirbFile)}`;
  * will preferentially look for an existing listing file.
  */
 export const getPathForListing = (gtirbFile: string, isa: ISA) =>
-    join(cacheDir(gtirbFile), isa, `${basename(gtirbFile, '.gtirb')}.gtasm`);
+    join(cacheDir(gtirbFile), isa, `${basename(gtirbFile, '.gtirb')}.view`);
