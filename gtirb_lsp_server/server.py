@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import asyncio
+import tempfile
+import hashlib
+import base64
 import json
 import logging
 import os
@@ -41,6 +45,9 @@ from pygls.lsp.types import (
     ReferenceOptions,
     ReferenceParams,
 )
+
+# from pygls.lsp.types.basic_structures import (ClientCallbackType)
+from concurrent.futures import Future
 
 # # Might be useful at some point but keeping commented now to avoid hurting our test coverage.
 # #
@@ -86,6 +93,13 @@ current_indexes = {}
 # Offsets with pending edits.
 modified_blocks = {}
 
+#
+# Locations for gtirbfile and indexing (json) for each document
+# For a remote-mode server they don't have a fixed location
+# relative to the listing file.
+gtirbfile_path_map = {}
+indexfile_path_map = {}
+
 
 # The LSP server object
 # This is a customizatino of the pygls language server, adding
@@ -100,16 +114,59 @@ class GtirbLanguageServer(LanguageServer):
     # To be available to the client they must be listed in the manifest.
     CMD_GET_LINE_FROM_ADDRESS = "gtirbGetLineFromAddress"
     CMD_GET_ADDRESS_OF_SYMBOL = "gtirbGetAddressOfSymbol"
-    rewrite_enabled = True
 
     def __init__(self):
         super().__init__()
+        self.rewrite_enabled = True
+        self.server_remote = False
 
     def can_rewrite(self):
         return self.rewrite_enabled
 
     def disable_rewrite(self):
         self.rewrite_enabled = False
+
+    def set_remote(self):
+        self.server_remote = True
+
+    def is_remote(self):
+        return self.server_remote
+
+    def get_gtirb_content(self, params: str, callback=None) -> Future:
+        """Sends gtirb file request to the client.
+
+        Args:
+            params(str): GTIRB file path
+        Returns:
+            concurrent.futures.Future object that will be resolved once a
+            response has been received
+        """
+        return self.lsp.send_request("gtirbGetGtirbFile", params, callback)
+
+    def get_gtirb_content_async(self, params: str) -> asyncio.Future:
+        """Calls `get_gtirb_file` method but designed to use with coroutines.
+
+        Args:
+            params(str): GTIRB file path
+        Returns:
+            concurrent.futures.Future object that will be resolved once a
+            response has been received
+        """
+        return asyncio.wrap_future(self.get_gtirb_content(params))
+
+
+server = GtirbLanguageServer()
+
+try:
+    import gtirb_functions
+    import gtirb_rewriting
+    import mcasm
+
+    X86Syntax = mcasm.X86Syntax
+except Exception as inst:
+    logger.info(inst)
+    logger.info("Disabling rewriting.")
+    server.disable_rewrite()
 
 
 # Symbolic references may appear at addresses not represented by offsets in the
@@ -350,25 +407,10 @@ class UUIDEncoder(json.JSONEncoder):
 
 def ensure_index(text_document):
     logger.debug(f"ensure_index({text_document.uri})")
-    parsed = urlparse(text_document.uri)
-
-    if parsed.scheme == "file":
-        asmfile = unquote(parsed.path)
-        # Remove extra leading slash in windows paths
-        if asmfile.startswith("/") and ":" in asmfile:
-            asmfile = asmfile[1:]
-        cachedir = os.path.dirname(os.path.dirname(asmfile))
-        cachedir_base = os.path.basename(cachedir)
-        if cachedir_base.startswith(".vscode."):
-            gtirbfile_base = cachedir_base[8:]
-            gtirbfile = os.path.join(os.path.dirname(cachedir), gtirbfile_base)
-            logger.info(f"gtirbfile: {gtirbfile}")
-            jsonfile = asmfile + ".json"
-    else:
-        logger.error(f"error in text document path: {text_document.uri}")
-        return
 
     try:
+        gtirbfile = gtirbfile_path_map[text_document.uri]
+        jsonfile = indexfile_path_map[text_document.uri]
         ir = gtirb.IR.load_protobuf(gtirbfile)
         current_gtirbs[text_document.uri] = ir
     except Exception as inst:
@@ -413,20 +455,6 @@ def address_to_line(ir: gtirb, line_by_offset: Dict[int, gtirb.Offset], address:
         line = line_by_offset.get(offset)
         if line:
             return line
-
-
-server = GtirbLanguageServer()
-
-try:
-    import gtirb_functions
-    import gtirb_rewriting
-    import mcasm
-
-    X86Syntax = mcasm.X86Syntax
-except Exception as inst:
-    logger.info(inst)
-    logger.info("Disabling rewriting.")
-    server.disable_rewrite()
 
 
 @server.command(GtirbLanguageServer.CMD_GET_LINE_FROM_ADDRESS)
@@ -561,6 +589,61 @@ def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams)
     # offset of the address stays consistent.
 
 
+#
+# If remote, get the gtirb file from the client
+# save it on the server,
+# and store a map to use for finding it later
+async def configure_path_mapping(ls, text_document):
+    """Set file paths for GTIRB and index files"""
+    parsed = urlparse(text_document.uri)
+    #
+    # Get source GTIRB file name from URI (should be its own method?
+    if parsed.scheme != "file":
+        logger.error(f"error in document path: {text_document.uri}")
+        return
+    asmfile = unquote(parsed.path)
+    # Remove extra leading slash in windows paths
+    if asmfile.startswith("/") and ":" in asmfile:
+        asmfile = asmfile[1:]
+    cachedir = os.path.dirname(os.path.dirname(asmfile))
+    cachedir_base = os.path.basename(cachedir)
+    if not cachedir_base.startswith(".vscode."):
+        logger.error(f"error in document path: {text_document.uri}")
+        return
+    gtirbfile_base = cachedir_base[8:]
+    gtirbfile = os.path.join(os.path.dirname(cachedir), gtirbfile_base)
+
+    #
+    # For local files, gtirb file path is now known, set it and return
+    if not ls.is_remote():
+        gtirbfile_path_map[text_document.uri] = gtirbfile
+        indexfile_path_map[text_document.uri] = asmfile + ".json"
+        return
+
+    #
+    # For remote mode, we need unique file path to store the GTIRB
+    # So hash the client IP and document uri together
+    transport = ls.lsp.transport
+    peername = transport._extra["peername"][0]
+    client_path = peername + ":" + text_document.uri
+
+    hashname = hashlib.md5(client_path.encode("utf-8")).hexdigest()
+    remote_gtirbfile = os.path.join(tempfile.gettempdir(), hashname)
+
+    # File might have been pulled already. But if not, pull it now.
+    if not os.path.exists(remote_gtirbfile):
+        client_gtirbfile_uri = "file://" + gtirbfile
+        result = await ls.get_gtirb_content_async(client_gtirbfile_uri)
+        gtirb_bytes = result["text"].encode("utf-8")
+        with open(remote_gtirbfile, "wb") as file_to_save:
+            gtirb_data = base64.decodebytes(gtirb_bytes)
+            file_to_save.write(gtirb_data)
+
+    gtirbfile_path_map[text_document.uri] = remote_gtirbfile
+    indexfile_path_map[text_document.uri] = remote_gtirbfile + ".json"
+    return
+
+
 @server.feature(TEXT_DOCUMENT_DID_SAVE)
 async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParams):
     """Text document did save notification."""
@@ -644,6 +727,7 @@ async def did_open(ls: GtirbLanguageServer, params: DidOpenTextDocumentParams):
 
     # This is where to check the extension
     if ext == ".view":
+        await configure_path_mapping(ls, params.text_document)
         ensure_index(params.text_document)
         filename = os.path.split(params.text_document.uri)[1]
         ls.show_message(f"{filename} indexing completed.")
@@ -890,6 +974,7 @@ def function_decompilations(ir: gtirb, name: str) -> Optional[str]:
 
 
 def gtirb_tcp_server(host: str, port: int) -> None:
+    server.set_remote()
     server.start_tcp(host, port)
 
 

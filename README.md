@@ -46,7 +46,7 @@ And start or restart vscode. The extension will start up automatically whenever 
 ## Configuration options
 
 The extension adds two configuration settings to configure the connection between client and LSP server. You can find these in the extension settings under "GTIRB Server Configuration"
-- **Host**: (IP address of server): Set this to local host (default) for n LSP server running on the same host as the client, or host IP address if remote. To configure the extension to create a dedicated LSP server running as a subprocess to the GTIRB extension (client), out "stdio" for host.
+- **Host**: (IP address of server): Set this to "localhost" (default) for an LSP server running on the same host as the client, or host IP address if remote. To configure the extension to create a dedicated LSP server running as a subprocess to the GTIRB extension (client), use "stdio" for host.
 - **Port** (Port to connect to): This defaults to 3036, but can be changed to any convenient port number. If you are using something other than the default, be sure to use the same port when starting the LSP server. When the LSP server is a dedicated subprocess (host = "stdio") the port number is ignored.
 
 ## Building and installing the LSP server as a separate python package

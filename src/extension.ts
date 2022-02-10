@@ -13,6 +13,9 @@ import { GtirbEditorProvider } from './gtirbEditor';
 
 import { getAddressAndJump, getPathForListing } from './customCommands';
 
+import {promises as fs} from 'fs';
+import * as url from 'url';
+
 let client: LanguageClient;
 
 function getClientOptions(): LanguageClientOptions {
@@ -122,6 +125,17 @@ export async function activate(context: vscode.ExtensionContext) {
     } else {
         client = startLangServerTCP(port!, hostAddr!);
     }
+
+    // Register request handlers for custom requests
+    client.onReady().then(function (x: any) {
+        // Response to a Get GTIRB File request from the server
+        client.onRequest("gtirbGetGtirbFile", async (params: string) => {
+            const p = url.fileURLToPath(new url.URL(params));
+            const buf = await fs.readFile(p);
+            const text = buf.toString('base64');
+            return{params, languageId: '', version: 0, text: text};
+        });
+    });
 
     // Register our custom editor providers
     context.subscriptions.push(client.start());

@@ -2,7 +2,7 @@
     "name": "gtirb-vscode",
     "displayName": "GTIRB",
     "description": "Load and view GTIRB files",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "grammatech",
     "license": "proprietary",
     "repository": {
@@ -87,7 +87,7 @@
             "properties": {
                 "gtirb.server.host": {
                     "type": "string",
-                    "description": "IP address of server.",
+                    "description": "IP address of server (or use stdio for a local server).",
                     "default": "localhost"
                 },
                 "gtirb.server.port": {

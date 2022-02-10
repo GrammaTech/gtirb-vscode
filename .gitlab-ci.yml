@@ -106,7 +106,7 @@ build_vsix:
   artifacts:
     expire_in: 2 hrs
     paths:
-      - gtirb-vscode-0.0.1.vsix
+      - gtirb-vscode-*.*.*.vsix
 
 export_vsix:
   stage: export
