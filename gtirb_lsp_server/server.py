@@ -25,6 +25,7 @@ from pygls.lsp.methods import (
 )
 
 from pygls.server import LanguageServer
+from pygls.protocol import LanguageServerProtocol
 from pygls.workspace import Document
 
 from pygls.lsp.types import (
@@ -46,7 +47,7 @@ from pygls.lsp.types import (
     ReferenceParams,
 )
 
-# from pygls.lsp.types.basic_structures import (ClientCallbackType)
+from pydantic import BaseModel
 from concurrent.futures import Future
 
 # # Might be useful at some point but keeping commented now to avoid hurting our test coverage.
@@ -101,6 +102,11 @@ gtirbfile_path_map = {}
 indexfile_path_map = {}
 
 
+class GtirbPushParams(BaseModel):
+    uri: str
+    content: str
+
+
 # The LSP server object
 # This is a customizatino of the pygls language server, adding
 # configuration section, custom commands, and properties.
@@ -115,8 +121,8 @@ class GtirbLanguageServer(LanguageServer):
     CMD_GET_LINE_FROM_ADDRESS = "gtirbGetLineFromAddress"
     CMD_GET_ADDRESS_OF_SYMBOL = "gtirbGetAddressOfSymbol"
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, loop=None, protocol_cls=LanguageServerProtocol, max_workers: int = 2):
+        super().__init__(loop, protocol_cls, max_workers)
         self.rewrite_enabled = True
         self.server_remote = False
 
@@ -154,8 +160,68 @@ class GtirbLanguageServer(LanguageServer):
         """
         return asyncio.wrap_future(self.get_gtirb_content(params))
 
+    def push_gtirb_content(self, uri: str, content: str, callback=None) -> Future:
+        """Sends gtirb file content to the client.
 
-server = GtirbLanguageServer()
+        Args:
+            uri(str): URI of GTIRB file on the client
+            content(str): GTIRB content in base64 encoding
+        Returns:
+            concurrent.futures.Future object that will be resolved once a
+            response has been received
+        """
+        return self.lsp.send_request(
+            "gtirbPushGtirbFile", GtirbPushParams(uri=uri, content=content), callback
+        )
+
+    def push_gtirb_content_async(self, uri: str, content: str) -> asyncio.Future:
+        """Calls `push_gtirb_file` method but designed to use with coroutines.
+
+        Args:
+            uri(str): URI of GTIRB file on the client
+            content(str): GTIRB content in base64 encoding
+        Returns:
+            concurrent.futures.Future object that will be resolved once a
+            response has been received
+        """
+        return asyncio.wrap_future(self.push_gtirb_content(uri, content))
+
+
+class NonTerminatingLanguageServerProtocol(LanguageServerProtocol):
+    """
+    A language server protocol implementation which ignores
+    exit/shutdown/connection_lost messages from the client,
+    unless the server is running as a subprocess.
+    """
+
+    def using_stdio(self):
+        transport = self.transport
+        if transport is None:
+            return False
+        subprocess = transport.get_extra_info("subprocess", None)
+        if subprocess is None:
+            return False
+        return True
+
+    def bf_exit(self, *args):
+        """Stops the server process."""
+        if self.using_stdio():
+            super().bf_exit(self, *args)
+
+    def bf_shutdown(self, *args) -> None:
+        """Request from client which asks server to shutdown."""
+        if self.using_stdio():
+            return super().bf_shutdown(self, *args)
+
+    def connection_lost(self, *args):
+        """Method from base class, called when connection is lost, in which case we
+        want to shutdown the server's process as well.
+        """
+        if self.using_stdio():
+            super().connection_lost(self, *args)
+
+
+server = GtirbLanguageServer(protocol_cls=NonTerminatingLanguageServerProtocol)
 
 try:
     import gtirb_functions
@@ -589,18 +655,10 @@ def did_change(server: GtirbLanguageServer, params: DidChangeTextDocumentParams)
     # offset of the address stays consistent.
 
 
-#
-# If remote, get the gtirb file from the client
-# save it on the server,
-# and store a map to use for finding it later
-async def configure_path_mapping(ls, text_document):
-    """Set file paths for GTIRB and index files"""
-    parsed = urlparse(text_document.uri)
-    #
-    # Get source GTIRB file name from URI (should be its own method?
+def parse_listing_uri(listing_uri: str) -> Tuple[str, str]:
+    parsed = urlparse(listing_uri)
     if parsed.scheme != "file":
-        logger.error(f"error in document path: {text_document.uri}")
-        return
+        return None, None
     asmfile = unquote(parsed.path)
     # Remove extra leading slash in windows paths
     if asmfile.startswith("/") and ":" in asmfile:
@@ -608,10 +666,19 @@ async def configure_path_mapping(ls, text_document):
     cachedir = os.path.dirname(os.path.dirname(asmfile))
     cachedir_base = os.path.basename(cachedir)
     if not cachedir_base.startswith(".vscode."):
-        logger.error(f"error in document path: {text_document.uri}")
-        return
+        return None, None
     gtirbfile_base = cachedir_base[8:]
     gtirbfile = os.path.join(os.path.dirname(cachedir), gtirbfile_base)
+    return asmfile, gtirbfile
+
+
+async def configure_path_mapping(ls, text_document):
+    """Set file paths for GTIRB and index files"""
+
+    asmfile, gtirbfile = parse_listing_uri(text_document.uri)
+    if asmfile is None or gtirbfile is None:
+        logger.error(f"error in document path: {text_document.uri}")
+        return
 
     #
     # For local files, gtirb file path is now known, set it and return
@@ -624,10 +691,10 @@ async def configure_path_mapping(ls, text_document):
     # For remote mode, we need unique file path to store the GTIRB
     # So hash the client IP and document uri together
     transport = ls.lsp.transport
-    peername = transport._extra["peername"][0]
-    client_path = peername + ":" + text_document.uri
+    peername = transport.get_extra_info("peername")
+    client_path = peername[0] + ":" + text_document.uri
 
-    hashname = hashlib.md5(client_path.encode("utf-8")).hexdigest()
+    hashname = hashlib.md5(client_path.encode("utf-8")).hexdigest() + ".gtirb"
     remote_gtirbfile = os.path.join(tempfile.gettempdir(), hashname)
 
     # File might have been pulled already. But if not, pull it now.
@@ -639,6 +706,7 @@ async def configure_path_mapping(ls, text_document):
             gtirb_data = base64.decodebytes(gtirb_bytes)
             file_to_save.write(gtirb_data)
 
+    # Store a map to use for finding the files later
     gtirbfile_path_map[text_document.uri] = remote_gtirbfile
     indexfile_path_map[text_document.uri] = remote_gtirbfile + ".json"
     return
@@ -701,9 +769,21 @@ async def did_save(server: GtirbLanguageServer, params: DidSaveTextDocumentParam
         try:
             if len(blocks) > 0:
                 ctx.apply()
-                # FIXME: This will not work with remote operation.
-                ir.save_protobuf(uri.split("//")[1] + ".gtirb")
+                # Save gtirb, overwriting the original file
+                gtirbfile = gtirbfile_path_map[uri]
+                ir.save_protobuf(gtirbfile)
+                # If server is running in remote mode,
+                # push modified file back to client:
+                if server.is_remote:
+                    with open(gtirbfile, "rb") as file_to_send:
+                        gtirb_data = file_to_send.read()
+                        gtirb_bytes = base64.encodebytes(gtirb_data)
+                        asmfile, client_gtirb_path = parse_listing_uri(uri)
+                        await server.push_gtirb_content_async(
+                            "file://" + client_gtirb_path, gtirb_bytes
+                        )
                 server.show_message("GTIRB rewritten successfully")
+
             else:
                 server.show_message("No blocks to rewrite")
             # Clear modified blocks on a SUCCESSFUL rewrite.  Otherwise retain for another try.

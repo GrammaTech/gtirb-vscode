@@ -46,7 +46,7 @@ And start or restart vscode. The extension will start up automatically whenever 
 ## Configuration options
 
 The extension adds two configuration settings to configure the connection between client and LSP server. You can find these in the extension settings under "GTIRB Server Configuration"
-- **Host**: (IP address of server): Set this to "localhost" (default) for an LSP server running on the same host as the client, or host IP address if remote. To configure the extension to create a dedicated LSP server running as a subprocess to the GTIRB extension (client), use "stdio" for host.
+- **Host**: (IP address of server): Set this to "localhost" (default) for an LSP server running on the same host as the client, or host IP address if remote. To configure the extension to create a dedicated LSP server running as a subprocess to the GTIRB extension (client), use "stdio" for host. The subprocess will exit when the client disconnects.
 - **Port** (Port to connect to): This defaults to 3036, but can be changed to any convenient port number. If you are using something other than the default, be sure to use the same port when starting the LSP server. When the LSP server is a dedicated subprocess (host = "stdio") the port number is ignored.
 
 ## Building and installing the LSP server as a separate python package
@@ -68,7 +68,10 @@ Or, to install the GTIRB LSP server and dependencies, including packages needed 
 
 ## Running the LSP server
 
-If you are running in the repository and using the "Launch Client+Server" launch configuration, or if you have installed the extensino and the host is "stdio" in the GTIRB Server Configration settings, a server is started for you when the client starts up, and stopped when the client exits. If you are not running in one of these configurations you will need to manually start the LSP server. Generally this should be done before the extension (client) is activated, otherwise it will generate an error when it tries to connect to the server.
+Server start-up and connection may be automatic or manual depending on the way you are running:
+- If you have installed the extension and the host (in GTIRB Server Configration settings) is "stdio", a server is started for you when the client starts up, and stopped when the client exits.
+- If you are running in the repository, use the "Launch Server (TCP)" configuration to start an LSP server before starting a client, or use "Launch Client+Server" to start both. The server will not exit when the client disconnects, you can use Ctrl-C in the terminal window to close it.
+- You can also start the LSP Server manually using the command line below.
 
 To start the LSP server:
 ```
@@ -78,3 +81,7 @@ Where:
 - HOST is the server IP address, the default is 127.0.0.1
 - PORT is the TCP port, the default is 3036
 - Default logging is to report errors, use verbose or very-verbose for additional levels of logging.
+
+*NOTE* VSCode records user configuration settings in a file that persists, even when extensions are uninstalled. You may need to edit this file to reset the GTIRB Server host configuration. The path to this file depends on your host OS and version, some possibilities are:
+- Linux: $HOME/.config/Code/User/settings/json
+- Windows: C:\Users\%USERNAME%\AppData\Roaming\Code\User\Settings.json

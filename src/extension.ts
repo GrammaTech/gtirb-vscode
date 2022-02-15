@@ -109,6 +109,12 @@ async function getPythonPath(): Promise<string> {
     return pythonPath;
 }
 
+interface GtirbPushParams {
+    uri: string;
+    content: string;
+}
+
+
 export async function activate(context: vscode.ExtensionContext) {
     const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
     const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
@@ -128,12 +134,24 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Register request handlers for custom requests
     client.onReady().then(function (x: any) {
-        // Response to a Get GTIRB File request from the server
+        // Response to a "Get GTIRB File" request from the server
         client.onRequest("gtirbGetGtirbFile", async (params: string) => {
             const p = url.fileURLToPath(new url.URL(params));
             const buf = await fs.readFile(p);
             const text = buf.toString('base64');
             return{params, languageId: '', version: 0, text: text};
+        });
+        // Response to a "Push GTIRB File" request from the server
+        client.onRequest("gtirbPushGtirbFile", async (params: GtirbPushParams) => {
+            const gtirb_uri = params.uri;
+            const content = params.content;
+            const buf = Buffer.from(content, 'base64');
+            const p = url.fileURLToPath(new url.URL(gtirb_uri));
+            fs.writeFile(p, buf).then(
+                val => { console.log("write OK"); },
+                err => { throw new Error(`failed to write gtirb file: ${err}`); }
+            );
+            return{languageId: '', version: 0, text: "OK"};
         });
     });
 
