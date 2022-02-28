@@ -3,6 +3,7 @@ import { getNonce } from './util';
 import { Disposable } from './dispose';
 import * as path from 'path';
 import { ISA } from './customCommands';
+import { client } from './extension';
 
 import * as cp from 'child_process';
 import * as fs from 'fs';
@@ -52,7 +53,6 @@ class GtirbDocument extends Disposable implements vscode.CustomDocument {
 
         // Wait for text document
         const asmPath = asms.find(path => {
-            console.log(`trying ${path}`);
             return fs.existsSync(path);
         });
 
@@ -87,10 +87,10 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
     }
 
     private static readonly viewType = 'gtirb-loader.gtirb';
-    private myPath : string;
+    private extensionPath : string;
 
     constructor(private readonly context: vscode.ExtensionContext, private readonly pythonPath: string) {
-        this.myPath = context.extensionPath;
+        this.extensionPath = context.extensionPath;
     }
 
     async openCustomDocument(
@@ -99,18 +99,10 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
         token: vscode.CancellationToken
     ): Promise<GtirbDocument> {
         const document: GtirbDocument = GtirbDocument.create(uri);
-        console.log("gtirb resolve custom editor called.");
-
-        console.log (`extension path: ${this.myPath}`);
-        const path: string = uri.fsPath;
-        const assemblyFile: vscode.Uri = vscode.Uri.file(path.concat('.view'));
-        const jsonFile: vscode.Uri = vscode.Uri.file(assemblyFile.fsPath.concat('.json'));
-
-        if (fs.existsSync(assemblyFile.fsPath) && fs.existsSync(jsonFile.fsPath)) {
-            console.log("reusing existing assembly and index files.");
-        } else {
-            await execFile(this.pythonPath, `${this.myPath}/indexer.py`, path);
-        }
+        const gtirbPath: string = uri.fsPath;
+        const indexer = path.join(this.extensionPath, "indexer.py");
+        const asmGenerationMessage: string = await execFile(this.pythonPath, indexer, uri.fsPath);
+        client.outputChannel.appendLine(asmGenerationMessage);
         return document;
     }
 
@@ -125,9 +117,7 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
         _token: vscode.CancellationToken
     ): Promise<void> {
         // Setup initial content for the webview
-
         webviewPanel.webview.options = {
-            //enableScripts: true,
             enableScripts: false
         };
 

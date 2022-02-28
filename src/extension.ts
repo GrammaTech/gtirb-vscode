@@ -16,7 +16,7 @@ import { getAddressAndJump, getPathForListing } from './customCommands';
 import {promises as fs} from 'fs';
 import * as url from 'url';
 
-let client: LanguageClient;
+export let client: LanguageClient;
 
 function getClientOptions(): LanguageClientOptions {
     return {
@@ -25,7 +25,7 @@ function getClientOptions(): LanguageClientOptions {
             { scheme: "file", language: "gtgas" },
             { scheme: "file", language: "gtmips" },
         ],
-        outputChannelName: "[pygls] GTIRB LanguageServer",
+        outputChannelName: "Gtirb Language Server",
         synchronize: {
             // Notify the server about file changes to '.clientrc files contain in the workspace
             fileEvents: vscode.workspace.createFileSystemWatcher("**/.clientrc"),
@@ -148,8 +148,8 @@ export async function activate(context: vscode.ExtensionContext) {
             const buf = Buffer.from(content, 'base64');
             const p = url.fileURLToPath(new url.URL(gtirb_uri));
             fs.writeFile(p, buf).then(
-                val => { console.log("write OK"); },
-                err => { throw new Error(`failed to write gtirb file: ${err}`); }
+                val => { client.outputChannel.appendLine(`GTIRB from server: ${params.uri} transfer complete.`); },
+                err => { throw new Error(`failed to write gtirb file ${params.uri}: ${err}`); }
             );
             return{languageId: '', version: 0, text: "OK"};
         });

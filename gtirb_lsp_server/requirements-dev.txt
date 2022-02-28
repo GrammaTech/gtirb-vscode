@@ -4,6 +4,7 @@ pkginfo
 pre-commit
 pygls
 pytest
+pytest-asyncio
 pytest-cov
 requests
 twine

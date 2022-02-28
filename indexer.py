@@ -40,7 +40,7 @@ def index_gtirb(filepath):
                 log.writelines(lines)
 
         if isa_dir.is_dir() and asm_file.is_file():
-            print(f"Using existing assembly file ${asm_file}")
+            print(f"Using existing assembly file {asm_file}")
             return True
         else:
             # IFF it doesn't exist, create a subdir for caching files

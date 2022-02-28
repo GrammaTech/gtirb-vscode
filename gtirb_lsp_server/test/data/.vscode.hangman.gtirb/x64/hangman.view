@@ -1,0 +1,1468 @@
+#===================================
+.intel_syntax noprefix
+#===================================
+
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+nop
+
+#===================================
+.section .interp ,"a",@progbits
+#===================================
+
+.align 1
+          .byte 0x2f                                           # EA: 0x238
+          .byte 0x6c                                           # EA: 0x239
+          .byte 0x69                                           # EA: 0x23a
+          .byte 0x62                                           # EA: 0x23b
+          .byte 0x36                                           # EA: 0x23c
+          .byte 0x34                                           # EA: 0x23d
+          .byte 0x2f                                           # EA: 0x23e
+          .byte 0x6c                                           # EA: 0x23f
+          .byte 0x64                                           # EA: 0x240
+          .byte 0x2d                                           # EA: 0x241
+          .byte 0x6c                                           # EA: 0x242
+          .byte 0x69                                           # EA: 0x243
+          .byte 0x6e                                           # EA: 0x244
+          .byte 0x75                                           # EA: 0x245
+          .byte 0x78                                           # EA: 0x246
+          .byte 0x2d                                           # EA: 0x247
+          .byte 0x78                                           # EA: 0x248
+          .byte 0x38                                           # EA: 0x249
+          .byte 0x36                                           # EA: 0x24a
+          .byte 0x2d                                           # EA: 0x24b
+          .byte 0x36                                           # EA: 0x24c
+          .byte 0x34                                           # EA: 0x24d
+          .byte 0x2e                                           # EA: 0x24e
+          .byte 0x73                                           # EA: 0x24f
+          .byte 0x6f                                           # EA: 0x250
+          .byte 0x2e                                           # EA: 0x251
+          .byte 0x32                                           # EA: 0x252
+          .byte 0x0                                            # EA: 0x253
+#===================================
+# end section .interp
+#===================================
+
+#===================================
+.text
+#===================================
+
+          .byte 0x66                                           # EA: 0xbc6
+          .byte 0x2e                                           # EA: 0xbc7
+          .byte 0xf                                            # EA: 0xbc8
+          .byte 0x1f                                           # EA: 0xbc9
+          .byte 0x84                                           # EA: 0xbca
+          .byte 0x0                                            # EA: 0xbcb
+          .byte 0x0                                            # EA: 0xbcc
+          .byte 0x0                                            # EA: 0xbcd
+          .byte 0x0                                            # EA: 0xbce
+          .byte 0x0                                            # EA: 0xbcf
+          .byte 0xf                                            # EA: 0xbd2
+          .byte 0x1f                                           # EA: 0xbd3
+          .byte 0x40                                           # EA: 0xbd4
+          .byte 0x0                                            # EA: 0xbd5
+          .byte 0x66                                           # EA: 0xbd6
+          .byte 0x2e                                           # EA: 0xbd7
+          .byte 0xf                                            # EA: 0xbd8
+          .byte 0x1f                                           # EA: 0xbd9
+          .byte 0x84                                           # EA: 0xbda
+          .byte 0x0                                            # EA: 0xbdb
+          .byte 0x0                                            # EA: 0xbdc
+          .byte 0x0                                            # EA: 0xbdd
+          .byte 0x0                                            # EA: 0xbde
+          .byte 0x0                                            # EA: 0xbdf
+          .byte 0x66                                           # EA: 0xc17
+          .byte 0xf                                            # EA: 0xc18
+          .byte 0x1f                                           # EA: 0xc19
+          .byte 0x84                                           # EA: 0xc1a
+          .byte 0x0                                            # EA: 0xc1b
+          .byte 0x0                                            # EA: 0xc1c
+          .byte 0x0                                            # EA: 0xc1d
+          .byte 0x0                                            # EA: 0xc1e
+          .byte 0x0                                            # EA: 0xc1f
+          .byte 0xf                                            # EA: 0xc22
+          .byte 0x1f                                           # EA: 0xc23
+          .byte 0x40                                           # EA: 0xc24
+          .byte 0x0                                            # EA: 0xc25
+          .byte 0x66                                           # EA: 0xc26
+          .byte 0x2e                                           # EA: 0xc27
+          .byte 0xf                                            # EA: 0xc28
+          .byte 0x1f                                           # EA: 0xc29
+          .byte 0x84                                           # EA: 0xc2a
+          .byte 0x0                                            # EA: 0xc2b
+          .byte 0x0                                            # EA: 0xc2c
+          .byte 0x0                                            # EA: 0xc2d
+          .byte 0x0                                            # EA: 0xc2e
+          .byte 0x0                                            # EA: 0xc2f
+          .byte 0xf                                            # EA: 0xc61
+          .byte 0x1f                                           # EA: 0xc62
+          .byte 0x80                                           # EA: 0xc63
+          .byte 0x0                                            # EA: 0xc64
+          .byte 0x0                                            # EA: 0xc65
+          .byte 0x0                                            # EA: 0xc66
+          .byte 0x0                                            # EA: 0xc67
+          .byte 0x66                                           # EA: 0xc6a
+          .byte 0xf                                            # EA: 0xc6b
+          .byte 0x1f                                           # EA: 0xc6c
+          .byte 0x44                                           # EA: 0xc6d
+          .byte 0x0                                            # EA: 0xc6e
+          .byte 0x0                                            # EA: 0xc6f
+.align 2
+#-----------------------------------
+.globl keyChk
+.type keyChk, @function
+#-----------------------------------
+keyChk:
+
+            push RBP                                           # EA: 0xc7a
+            mov RBP,RSP                                        # EA: 0xc7b
+            sub RSP,160                                        # EA: 0xc7e
+            mov QWORD PTR [RBP-152],RDI                        # EA: 0xc85
+            mov RAX,QWORD PTR FS:[40]                          # EA: 0xc8c
+            mov QWORD PTR [RBP-8],RAX                          # EA: 0xc95
+            xor EAX,EAX                                        # EA: 0xc99
+            mov DWORD PTR [RBP-132],1580106464                 # EA: 0xc9b
+            lea RAX,QWORD PTR [RBP-128]                        # EA: 0xca5
+            mov RDI,RAX                                        # EA: 0xca9
+            call MD5_Init@PLT                                  # EA: 0xcac
+
+            mov RAX,QWORD PTR [RBP-152]                        # EA: 0xcb1
+            mov ESI,24                                         # EA: 0xcb8
+            mov RDI,RAX                                        # EA: 0xcbd
+            call strnlen@PLT                                   # EA: 0xcc0
+
+            mov RDX,RAX                                        # EA: 0xcc5
+            mov RCX,QWORD PTR [RBP-152]                        # EA: 0xcc8
+            lea RAX,QWORD PTR [RBP-128]                        # EA: 0xccf
+            mov RSI,RCX                                        # EA: 0xcd3
+            mov RDI,RAX                                        # EA: 0xcd6
+            call MD5_Update@PLT                                # EA: 0xcd9
+
+            lea RDX,QWORD PTR [RBP-128]                        # EA: 0xcde
+            lea RAX,QWORD PTR [RBP-32]                         # EA: 0xce2
+            mov RSI,RDX                                        # EA: 0xce6
+            mov RDI,RAX                                        # EA: 0xce9
+            call MD5_Final@PLT                                 # EA: 0xcec
+
+            mov DWORD PTR [RBP-136],0                          # EA: 0xcf1
+            mov DWORD PTR [RBP-140],0                          # EA: 0xcfb
+            jmp .L_d9f                                         # EA: 0xd05
+.L_d0a:
+
+            mov EAX,DWORD PTR [RBP-140]                        # EA: 0xd0a
+            cdqe                                               # EA: 0xd10
+            movzx EAX,BYTE PTR [RBP+RAX*1-32]                  # EA: 0xd12
+            movzx EDX,AL                                       # EA: 0xd17
+            mov EAX,DWORD PTR [RBP-140]                        # EA: 0xd1a
+            add EAX,1                                          # EA: 0xd20
+            cdqe                                               # EA: 0xd23
+            movzx EAX,BYTE PTR [RBP+RAX*1-32]                  # EA: 0xd25
+            movzx EAX,AL                                       # EA: 0xd2a
+            shl EAX,4                                          # EA: 0xd2d
+            add EDX,EAX                                        # EA: 0xd30
+            mov EAX,DWORD PTR [RBP-140]                        # EA: 0xd32
+            add EAX,2                                          # EA: 0xd38
+            cdqe                                               # EA: 0xd3b
+            movzx EAX,BYTE PTR [RBP+RAX*1-32]                  # EA: 0xd3d
+            movzx EAX,AL                                       # EA: 0xd42
+            shl EAX,8                                          # EA: 0xd45
+            add EDX,EAX                                        # EA: 0xd48
+            mov EAX,DWORD PTR [RBP-140]                        # EA: 0xd4a
+            add EAX,3                                          # EA: 0xd50
+            cdqe                                               # EA: 0xd53
+            movzx EAX,BYTE PTR [RBP+RAX*1-32]                  # EA: 0xd55
+            movzx EAX,AL                                       # EA: 0xd5a
+            shl EAX,12                                         # EA: 0xd5d
+            add EDX,EAX                                        # EA: 0xd60
+            mov EAX,DWORD PTR [RBP-140]                        # EA: 0xd62
+            add EAX,4                                          # EA: 0xd68
+            cdqe                                               # EA: 0xd6b
+            movzx EAX,BYTE PTR [RBP+RAX*1-32]                  # EA: 0xd6d
+            movzx EAX,AL                                       # EA: 0xd72
+            shl EAX,16                                         # EA: 0xd75
+            add EDX,EAX                                        # EA: 0xd78
+            mov EAX,DWORD PTR [RBP-140]                        # EA: 0xd7a
+            add EAX,5                                          # EA: 0xd80
+            cdqe                                               # EA: 0xd83
+            movzx EAX,BYTE PTR [RBP+RAX*1-32]                  # EA: 0xd85
+            movzx EAX,AL                                       # EA: 0xd8a
+            shl EAX,20                                         # EA: 0xd8d
+            add EAX,EDX                                        # EA: 0xd90
+            add DWORD PTR [RBP-136],EAX                        # EA: 0xd92
+            add DWORD PTR [RBP-140],1                          # EA: 0xd98
+.L_d9f:
+
+            cmp DWORD PTR [RBP-140],9                          # EA: 0xd9f
+            jle .L_d0a                                         # EA: 0xda6
+
+            mov EAX,DWORD PTR [RBP-136]                        # EA: 0xdac
+            cmp EAX,DWORD PTR [RBP-132]                        # EA: 0xdb2
+            jne .L_dc1                                         # EA: 0xdb8
+
+            mov EAX,0                                          # EA: 0xdba
+            jmp .L_dc6                                         # EA: 0xdbf
+.L_dc1:
+
+            mov EAX,4294967295                                 # EA: 0xdc1
+.L_dc6:
+
+            mov RCX,QWORD PTR [RBP-8]                          # EA: 0xdc6
+            xor RCX,QWORD PTR FS:[40]                          # EA: 0xdca
+            je .L_dda                                          # EA: 0xdd3
+
+            call __stack_chk_fail@PLT                          # EA: 0xdd5
+.L_dda:
+
+            leave                                              # EA: 0xdda
+            ret                                                # EA: 0xddb
+.align 4
+#-----------------------------------
+.globl i_rnd
+.type i_rnd, @function
+#-----------------------------------
+i_rnd:
+
+            push RBP                                           # EA: 0xddc
+            mov RBP,RSP                                        # EA: 0xddd
+            sub RSP,16                                         # EA: 0xde0
+            mov DWORD PTR [RBP-4],EDI                          # EA: 0xde4
+            movzx EAX,BYTE PTR [RIP+srand_called]              # EA: 0xde7
+            xor EAX,1                                          # EA: 0xdee
+            test AL,AL                                         # EA: 0xdf1
+            je .L_e10                                          # EA: 0xdf3
+
+            mov EDI,0                                          # EA: 0xdf5
+            call time@PLT                                      # EA: 0xdfa
+
+            shl EAX,10                                         # EA: 0xdff
+            mov EDI,EAX                                        # EA: 0xe02
+            call srand@PLT                                     # EA: 0xe04
+
+            mov BYTE PTR [RIP+srand_called],1                  # EA: 0xe09
+.L_e10:
+
+            call rand@PLT                                      # EA: 0xe10
+
+            cdq                                                # EA: 0xe15
+            idiv DWORD PTR [RBP-4]                             # EA: 0xe16
+            mov EAX,EDX                                        # EA: 0xe19
+            leave                                              # EA: 0xe1b
+            ret                                                # EA: 0xe1c
+#-----------------------------------
+.globl decrypt
+.type decrypt, @function
+#-----------------------------------
+decrypt:
+
+            push RBP                                           # EA: 0xe1d
+            mov RBP,RSP                                        # EA: 0xe1e
+            sub RSP,48                                         # EA: 0xe21
+            mov QWORD PTR [RBP-40],RDI                         # EA: 0xe25
+            mov RAX,QWORD PTR [RBP-40]                         # EA: 0xe29
+            mov RDI,RAX                                        # EA: 0xe2d
+            call strlen@PLT                                    # EA: 0xe30
+
+            sub RAX,3                                          # EA: 0xe35
+            movabs RDX,-6148914691236517205                    # EA: 0xe39
+            mul RDX                                            # EA: 0xe43
+            mov RAX,RDX                                        # EA: 0xe46
+            shr RAX,1                                          # EA: 0xe49
+            add EAX,2                                          # EA: 0xe4c
+            mov DWORD PTR [RBP-28],EAX                         # EA: 0xe4f
+            mov EAX,DWORD PTR [RBP-28]                         # EA: 0xe52
+            cdqe                                               # EA: 0xe55
+            mov RDI,RAX                                        # EA: 0xe57
+            call malloc@PLT                                    # EA: 0xe5a
+
+            mov QWORD PTR [RBP-24],RAX                         # EA: 0xe5f
+            mov RAX,QWORD PTR [RBP-24]                         # EA: 0xe63
+            mov QWORD PTR [RBP-16],RAX                         # EA: 0xe67
+            mov RAX,QWORD PTR [RBP-40]                         # EA: 0xe6b
+            mov QWORD PTR [RBP-8],RAX                          # EA: 0xe6f
+            mov RAX,QWORD PTR [RBP-40]                         # EA: 0xe73
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0xe77
+            movsx EAX,AL                                       # EA: 0xe7a
+            mov DWORD PTR [RBP-32],EAX                         # EA: 0xe7d
+            jmp .L_f09                                         # EA: 0xe80
+.L_e85:
+
+            mov RDX,QWORD PTR [RBP-40]                         # EA: 0xe85
+            mov RAX,QWORD PTR [RBP-8]                          # EA: 0xe89
+            sub RDX,RAX                                        # EA: 0xe8d
+            mov RAX,RDX                                        # EA: 0xe90
+            lea RCX,QWORD PTR [RAX+2]                          # EA: 0xe93
+            movabs RDX,6148914691236517206                     # EA: 0xe97
+            mov RAX,RCX                                        # EA: 0xea1
+            imul RDX                                           # EA: 0xea4
+            mov RAX,RCX                                        # EA: 0xea7
+            sar RAX,63                                         # EA: 0xeaa
+            sub RDX,RAX                                        # EA: 0xeae
+            mov RAX,RDX                                        # EA: 0xeb1
+            add RAX,RAX                                        # EA: 0xeb4
+            add RAX,RDX                                        # EA: 0xeb7
+            sub RCX,RAX                                        # EA: 0xeba
+            mov RDX,RCX                                        # EA: 0xebd
+            cmp RDX,1                                          # EA: 0xec0
+            jne .L_ef7                                         # EA: 0xec4
+
+            mov EAX,DWORD PTR [RBP-32]                         # EA: 0xec6
+            mov ECX,EAX                                        # EA: 0xec9
+            mov RDX,QWORD PTR [RBP-8]                          # EA: 0xecb
+            mov RAX,QWORD PTR [RBP-40]                         # EA: 0xecf
+            sub RDX,RAX                                        # EA: 0xed3
+            mov RAX,RDX                                        # EA: 0xed6
+            sub ECX,EAX                                        # EA: 0xed9
+            mov EDX,ECX                                        # EA: 0xedb
+            mov EAX,DWORD PTR [RBP-28]                         # EA: 0xedd
+            sub EDX,EAX                                        # EA: 0xee0
+            mov EAX,EDX                                        # EA: 0xee2
+            lea ECX,DWORD PTR [RAX-1]                          # EA: 0xee4
+            mov RAX,QWORD PTR [RBP-24]                         # EA: 0xee7
+            lea RDX,QWORD PTR [RAX+1]                          # EA: 0xeeb
+            mov QWORD PTR [RBP-24],RDX                         # EA: 0xeef
+            mov EDX,ECX                                        # EA: 0xef3
+            mov BYTE PTR [RAX],DL                              # EA: 0xef5
+.L_ef7:
+
+            add QWORD PTR [RBP-40],1                           # EA: 0xef7
+            mov RAX,QWORD PTR [RBP-40]                         # EA: 0xefc
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0xf00
+            movsx EAX,AL                                       # EA: 0xf03
+            mov DWORD PTR [RBP-32],EAX                         # EA: 0xf06
+.L_f09:
+
+            cmp DWORD PTR [RBP-32],0                           # EA: 0xf09
+            jne .L_e85                                         # EA: 0xf0d
+
+            mov RAX,QWORD PTR [RBP-24]                         # EA: 0xf13
+            mov BYTE PTR [RAX],0                               # EA: 0xf17
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xf1a
+            leave                                              # EA: 0xf1e
+            ret                                                # EA: 0xf1f
+.align 10
+#-----------------------------------
+.globl printBody
+.type printBody, @function
+#-----------------------------------
+printBody:
+
+            push RBP                                           # EA: 0xf20
+            mov RBP,RSP                                        # EA: 0xf21
+            sub RSP,16                                         # EA: 0xf24
+            mov DWORD PTR [RBP-4],EDI                          # EA: 0xf28
+            mov QWORD PTR [RBP-16],RSI                         # EA: 0xf2b
+            mov EAX,DWORD PTR [RBP-4]                          # EA: 0xf2f
+            mov ESI,EAX                                        # EA: 0xf32
+            lea RDI,QWORD PTR [RIP+.L_15c0]                    # EA: 0xf34
+            mov EAX,0                                          # EA: 0xf3b
+            call printf@PLT                                    # EA: 0xf40
+
+            cmp DWORD PTR [RBP-4],6                            # EA: 0xf45
+            ja .L_fc4                                          # EA: 0xf49
+
+            mov EAX,DWORD PTR [RBP-4]                          # EA: 0xf4b
+            lea RDX,QWORD PTR [RAX*4]                          # EA: 0xf4e
+            lea RAX,QWORD PTR [RIP+.L_163c]                    # EA: 0xf56
+            mov EAX,DWORD PTR [RDX+RAX*1]                      # EA: 0xf5d
+            movsxd RDX,EAX                                     # EA: 0xf60
+            lea RAX,QWORD PTR [RIP+.L_163c]                    # EA: 0xf63
+            add RAX,RDX                                        # EA: 0xf6a
+            jmp RAX                                            # EA: 0xf6d
+.L_f6f:
+
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xf6f
+            add RAX,6                                          # EA: 0xf73
+            mov BYTE PTR [RAX],92                              # EA: 0xf77
+            jmp .L_fc5                                         # EA: 0xf7a
+.L_f7c:
+
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xf7c
+            add RAX,5                                          # EA: 0xf80
+            mov BYTE PTR [RAX],47                              # EA: 0xf84
+            jmp .L_fc5                                         # EA: 0xf87
+.L_f89:
+
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xf89
+            add RAX,4                                          # EA: 0xf8d
+            mov BYTE PTR [RAX],92                              # EA: 0xf91
+            jmp .L_fc5                                         # EA: 0xf94
+.L_f96:
+
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xf96
+            add RAX,3                                          # EA: 0xf9a
+            mov BYTE PTR [RAX],124                             # EA: 0xf9e
+            jmp .L_fc5                                         # EA: 0xfa1
+.L_fa3:
+
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xfa3
+            add RAX,2                                          # EA: 0xfa7
+            mov BYTE PTR [RAX],47                              # EA: 0xfab
+            jmp .L_fc5                                         # EA: 0xfae
+.L_fb0:
+
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xfb0
+            add RAX,1                                          # EA: 0xfb4
+            mov BYTE PTR [RAX],41                              # EA: 0xfb8
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xfbb
+            mov BYTE PTR [RAX],40                              # EA: 0xfbf
+            jmp .L_fc5                                         # EA: 0xfc2
+.L_fc4:
+
+            nop                                                # EA: 0xfc4
+.L_fc5:
+
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xfc5
+            add RAX,6                                          # EA: 0xfc9
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0xfcd
+            movsx EDI,AL                                       # EA: 0xfd0
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xfd3
+            add RAX,5                                          # EA: 0xfd7
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0xfdb
+            movsx ESI,AL                                       # EA: 0xfde
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xfe1
+            add RAX,4                                          # EA: 0xfe5
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0xfe9
+            movsx R9D,AL                                       # EA: 0xfec
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xff0
+            add RAX,3                                          # EA: 0xff4
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0xff8
+            movsx R8D,AL                                       # EA: 0xffb
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0xfff
+            add RAX,2                                          # EA: 0x1003
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0x1007
+            movsx ECX,AL                                       # EA: 0x100a
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0x100d
+            add RAX,1                                          # EA: 0x1011
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0x1015
+            movsx EDX,AL                                       # EA: 0x1018
+            mov RAX,QWORD PTR [RBP-16]                         # EA: 0x101b
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0x101f
+            movsx EAX,AL                                       # EA: 0x1022
+            push RDI                                           # EA: 0x1025
+            push RSI                                           # EA: 0x1026
+            mov ESI,EAX                                        # EA: 0x1027
+            lea RDI,QWORD PTR [RIP+.L_15d0]                    # EA: 0x1029
+            mov EAX,0                                          # EA: 0x1030
+            call printf@PLT                                    # EA: 0x1035
+
+            add RSP,16                                         # EA: 0x103a
+            nop                                                # EA: 0x103e
+            leave                                              # EA: 0x103f
+            ret                                                # EA: 0x1040
+#-----------------------------------
+.globl printWord
+.type printWord, @function
+#-----------------------------------
+printWord:
+
+            push RBP                                           # EA: 0x1041
+            mov RBP,RSP                                        # EA: 0x1042
+            sub RSP,32                                         # EA: 0x1045
+            mov QWORD PTR [RBP-24],RDI                         # EA: 0x1049
+            mov DWORD PTR [RBP-28],ESI                         # EA: 0x104d
+            mov EDI,9                                          # EA: 0x1050
+            call putchar@PLT                                   # EA: 0x1055
+
+            mov DWORD PTR [RBP-4],0                            # EA: 0x105a
+            jmp .L_108d                                        # EA: 0x1061
+.L_1063:
+
+            mov EAX,DWORD PTR [RBP-4]                          # EA: 0x1063
+            movsxd RDX,EAX                                     # EA: 0x1066
+            mov RAX,QWORD PTR [RBP-24]                         # EA: 0x1069
+            add RAX,RDX                                        # EA: 0x106d
+            movzx EAX,BYTE PTR [RAX]                           # EA: 0x1070
+            movsx EAX,AL                                       # EA: 0x1073
+            mov ESI,EAX                                        # EA: 0x1076
+            lea RDI,QWORD PTR [RIP+.L_1658]                    # EA: 0x1078
+            mov EAX,0                                          # EA: 0x107f
+            call printf@PLT                                    # EA: 0x1084
+
+            add DWORD PTR [RBP-4],1                            # EA: 0x1089
+.L_108d:
+
+            mov EAX,DWORD PTR [RBP-4]                          # EA: 0x108d
+            cmp EAX,DWORD PTR [RBP-28]                         # EA: 0x1090
+            jl .L_1063                                         # EA: 0x1093
+
+            lea RDI,QWORD PTR [RIP+.L_165c]                    # EA: 0x1095
+            call puts@PLT                                      # EA: 0x109c
+
+            nop                                                # EA: 0x10a1
+            leave                                              # EA: 0x10a2
+            ret                                                # EA: 0x10a3
+.align 4
+#-----------------------------------
+.globl main
+.type main, @function
+#-----------------------------------
+main:
+
+            push RBP                                           # EA: 0x10a4
+            mov RBP,RSP                                        # EA: 0x10a5
+            sub RSP,592                                        # EA: 0x10a8
+            mov RAX,QWORD PTR FS:[40]                          # EA: 0x10af
+            mov QWORD PTR [RBP-8],RAX                          # EA: 0x10b8
+            xor EAX,EAX                                        # EA: 0x10bc
+            lea RAX,QWORD PTR [RBP-112]                        # EA: 0x10be
+            mov QWORD PTR [RBP-568],RAX                        # EA: 0x10c2
+            lea RDI,QWORD PTR [RIP+.L_165e]                    # EA: 0x10c9
+            mov EAX,0                                          # EA: 0x10d0
+            call printf@PLT                                    # EA: 0x10d5
+
+            mov RDX,QWORD PTR [RIP+stdin]                      # EA: 0x10da
+            lea RAX,QWORD PTR [RBP-112]                        # EA: 0x10e1
+            mov ESI,99                                         # EA: 0x10e5
+            mov RDI,RAX                                        # EA: 0x10ea
+            call fgets@PLT                                     # EA: 0x10ed
+
+            mov RAX,QWORD PTR [RBP-568]                        # EA: 0x10f2
+            mov RDI,RAX                                        # EA: 0x10f9
+            mov EAX,0                                          # EA: 0x10fc
+
+            test EAX,EAX                                       # EA: 0x1101
+            jns .L_111b                                        # EA: 0x1103
+
+            lea RDI,QWORD PTR [RIP+.L_166b]                    # EA: 0x1105
+            call puts@PLT                                      # EA: 0x110c
+
+            mov EAX,0                                          # EA: 0x1111
+            jmp .L_14f7                                        # EA: 0x1116
+.L_111b:
+
+            lea RDI,QWORD PTR [RIP+.L_1678]                    # EA: 0x111b
+            mov EAX,0                                          # EA: 0x1122
+            call printf@PLT                                    # EA: 0x1127
+
+            lea RDI,QWORD PTR [RIP+.L_1699]                    # EA: 0x112c
+            mov EAX,0                                          # EA: 0x1133
+            call printf@PLT                                    # EA: 0x1138
+
+            lea RDI,QWORD PTR [RIP+.L_16a8]                    # EA: 0x113d
+            mov EAX,0                                          # EA: 0x1144
+            call printf@PLT                                    # EA: 0x1149
+
+            lea RDI,QWORD PTR [RIP+.L_16d0]                    # EA: 0x114e
+            mov EAX,0                                          # EA: 0x1155
+            call printf@PLT                                    # EA: 0x115a
+
+            lea RDI,QWORD PTR [RIP+.L_16f8]                    # EA: 0x115f
+            mov EAX,0                                          # EA: 0x1166
+            call printf@PLT                                    # EA: 0x116b
+
+            lea RDI,QWORD PTR [RIP+.L_1738]                    # EA: 0x1170
+            mov EAX,0                                          # EA: 0x1177
+            call printf@PLT                                    # EA: 0x117c
+
+            lea RDI,QWORD PTR [RIP+.L_1768]                    # EA: 0x1181
+            mov EAX,0                                          # EA: 0x1188
+            call printf@PLT                                    # EA: 0x118d
+
+            lea RDI,QWORD PTR [RIP+.L_177d]                    # EA: 0x1192
+            call puts@PLT                                      # EA: 0x1199
+
+            lea RAX,QWORD PTR [RBP-528]                        # EA: 0x119e
+            lea RDX,QWORD PTR [RIP+.L_1820]                    # EA: 0x11a5
+            mov ECX,50                                         # EA: 0x11ac
+            mov RDI,RAX                                        # EA: 0x11b1
+            mov RSI,RDX                                        # EA: 0x11b4
+
+            rep movsq                                          # EA: 0x11b7
+
+            mov EDI,7                                          # EA: 0x11ba
+            call malloc@PLT                                    # EA: 0x11bf
+
+            mov QWORD PTR [RBP-560],RAX                        # EA: 0x11c4
+            mov EDI,10                                         # EA: 0x11cb
+            call i_rnd                                         # EA: 0x11d0
+
+            mov DWORD PTR [RBP-576],EAX                        # EA: 0x11d5
+            lea RCX,QWORD PTR [RBP-528]                        # EA: 0x11db
+            mov EAX,DWORD PTR [RBP-576]                        # EA: 0x11e2
+            movsxd RDX,EAX                                     # EA: 0x11e8
+            mov RAX,RDX                                        # EA: 0x11eb
+            shl RAX,2                                          # EA: 0x11ee
+            add RAX,RDX                                        # EA: 0x11f2
+            shl RAX,3                                          # EA: 0x11f5
+            add RAX,RCX                                        # EA: 0x11f9
+            mov RDI,RAX                                        # EA: 0x11fc
+            call decrypt                                       # EA: 0x11ff
+
+            mov QWORD PTR [RBP-552],RAX                        # EA: 0x1204
+            mov RAX,QWORD PTR [RBP-552]                        # EA: 0x120b
+            mov RDI,RAX                                        # EA: 0x1212
+            call strlen@PLT                                    # EA: 0x1215
+
+            mov DWORD PTR [RBP-572],EAX                        # EA: 0x121a
+            mov EAX,DWORD PTR [RBP-572]                        # EA: 0x1220
+            cdqe                                               # EA: 0x1226
+            mov RDI,RAX                                        # EA: 0x1228
+            call malloc@PLT                                    # EA: 0x122b
+
+            mov QWORD PTR [RBP-544],RAX                        # EA: 0x1230
+            mov RAX,QWORD PTR [RBP-560]                        # EA: 0x1237
+            mov EDX,7                                          # EA: 0x123e
+            mov ESI,32                                         # EA: 0x1243
+            mov RDI,RAX                                        # EA: 0x1248
+            call memset@PLT                                    # EA: 0x124b
+
+            mov EAX,DWORD PTR [RBP-572]                        # EA: 0x1250
+            movsxd RDX,EAX                                     # EA: 0x1256
+            mov RAX,QWORD PTR [RBP-544]                        # EA: 0x1259
+            mov ESI,95                                         # EA: 0x1260
+            mov RDI,RAX                                        # EA: 0x1265
+            call memset@PLT                                    # EA: 0x1268
+
+            mov DWORD PTR [RBP-588],0                          # EA: 0x126d
+            mov RAX,QWORD PTR [RIP+stdin]                      # EA: 0x1277
+            mov ECX,0                                          # EA: 0x127e
+            mov EDX,2                                          # EA: 0x1283
+            mov ESI,0                                          # EA: 0x1288
+            mov RDI,RAX                                        # EA: 0x128d
+            call setvbuf@PLT                                   # EA: 0x1290
+.L_1295:
+
+            mov BYTE PTR [RBP-589],0                           # EA: 0x1295
+            lea RDI,QWORD PTR [RIP+.L_165c]                    # EA: 0x129c
+            call puts@PLT                                      # EA: 0x12a3
+
+            mov RDX,QWORD PTR [RBP-560]                        # EA: 0x12a8
+            mov EAX,DWORD PTR [RBP-588]                        # EA: 0x12af
+            mov RSI,RDX                                        # EA: 0x12b5
+            mov EDI,EAX                                        # EA: 0x12b8
+            call printBody                                     # EA: 0x12ba
+
+            lea RDI,QWORD PTR [RIP+.L_165c]                    # EA: 0x12bf
+            call puts@PLT                                      # EA: 0x12c6
+
+            lea RDI,QWORD PTR [RIP+.L_178e]                    # EA: 0x12cb
+            mov EAX,0                                          # EA: 0x12d2
+            call printf@PLT                                    # EA: 0x12d7
+
+            cmp DWORD PTR [RBP-588],0                          # EA: 0x12dc
+            jne .L_12f1                                        # EA: 0x12e3
+
+            lea RDI,QWORD PTR [RIP+.L_17a0]                    # EA: 0x12e5
+            call puts@PLT                                      # EA: 0x12ec
+.L_12f1:
+
+            mov DWORD PTR [RBP-584],0                          # EA: 0x12f1
+            jmp .L_131b                                        # EA: 0x12fb
+.L_12fd:
+
+            mov EAX,DWORD PTR [RBP-584]                        # EA: 0x12fd
+            cdqe                                               # EA: 0x1303
+            movzx EAX,BYTE PTR [RBP+RAX*1-118]                 # EA: 0x1305
+            movsx EAX,AL                                       # EA: 0x130a
+            mov EDI,EAX                                        # EA: 0x130d
+            call putchar@PLT                                   # EA: 0x130f
+
+            add DWORD PTR [RBP-584],1                          # EA: 0x1314
+.L_131b:
+
+            mov EAX,DWORD PTR [RBP-584]                        # EA: 0x131b
+            cmp EAX,DWORD PTR [RBP-588]                        # EA: 0x1321
+            jl .L_12fd                                         # EA: 0x1327
+
+            lea RDI,QWORD PTR [RIP+.L_165c]                    # EA: 0x1329
+            call puts@PLT                                      # EA: 0x1330
+
+            mov EDX,DWORD PTR [RBP-572]                        # EA: 0x1335
+            mov RAX,QWORD PTR [RBP-544]                        # EA: 0x133b
+            mov ESI,EDX                                        # EA: 0x1342
+            mov RDI,RAX                                        # EA: 0x1344
+            call printWord                                     # EA: 0x1347
+
+            lea RDI,QWORD PTR [RIP+.L_17a8]                    # EA: 0x134c
+            mov EAX,0                                          # EA: 0x1353
+            call printf@PLT                                    # EA: 0x1358
+.L_135d:
+
+            lea RAX,QWORD PTR [RBP-590]                        # EA: 0x135d
+            mov RSI,RAX                                        # EA: 0x1364
+            lea RDI,QWORD PTR [RIP+.L_17cd]                    # EA: 0x1367
+            mov EAX,0                                          # EA: 0x136e
+            call __isoc99_scanf@PLT                            # EA: 0x1373
+
+            call getchar@PLT                                   # EA: 0x1378
+
+            cmp EAX,10                                         # EA: 0x137d
+            jne .L_135d                                        # EA: 0x1380
+
+            mov DWORD PTR [RBP-580],0                          # EA: 0x1382
+            jmp .L_13d9                                        # EA: 0x138c
+.L_138e:
+
+            mov EAX,DWORD PTR [RBP-580]                        # EA: 0x138e
+            movsxd RDX,EAX                                     # EA: 0x1394
+            mov RAX,QWORD PTR [RBP-552]                        # EA: 0x1397
+            add RAX,RDX                                        # EA: 0x139e
+            movzx EDX,BYTE PTR [RAX]                           # EA: 0x13a1
+            movzx EAX,BYTE PTR [RBP-590]                       # EA: 0x13a4
+            cmp DL,AL                                          # EA: 0x13ab
+            jne .L_13d2                                        # EA: 0x13ad
+
+            mov BYTE PTR [RBP-589],1                           # EA: 0x13af
+            mov EAX,DWORD PTR [RBP-580]                        # EA: 0x13b6
+            movsxd RDX,EAX                                     # EA: 0x13bc
+            mov RAX,QWORD PTR [RBP-544]                        # EA: 0x13bf
+            add RDX,RAX                                        # EA: 0x13c6
+            movzx EAX,BYTE PTR [RBP-590]                       # EA: 0x13c9
+            mov BYTE PTR [RDX],AL                              # EA: 0x13d0
+.L_13d2:
+
+            add DWORD PTR [RBP-580],1                          # EA: 0x13d2
+.L_13d9:
+
+            mov EAX,DWORD PTR [RBP-580]                        # EA: 0x13d9
+            cmp EAX,DWORD PTR [RBP-572]                        # EA: 0x13df
+            jl .L_138e                                         # EA: 0x13e5
+
+            movzx EAX,BYTE PTR [RBP-589]                       # EA: 0x13e7
+            xor EAX,1                                          # EA: 0x13ee
+            test AL,AL                                         # EA: 0x13f1
+            je .L_140f                                         # EA: 0x13f3
+
+            movzx EDX,BYTE PTR [RBP-590]                       # EA: 0x13f5
+            mov EAX,DWORD PTR [RBP-588]                        # EA: 0x13fc
+            cdqe                                               # EA: 0x1402
+            mov BYTE PTR [RBP+RAX*1-118],DL                    # EA: 0x1404
+            add DWORD PTR [RBP-588],1                          # EA: 0x1408
+.L_140f:
+
+            mov RAX,QWORD PTR [RBP-544]                        # EA: 0x140f
+            mov ESI,95                                         # EA: 0x1416
+            mov RDI,RAX                                        # EA: 0x141b
+            call strchr@PLT                                    # EA: 0x141e
+
+            mov QWORD PTR [RBP-536],RAX                        # EA: 0x1423
+            cmp DWORD PTR [RBP-588],5                          # EA: 0x142a
+            jg .L_1441                                         # EA: 0x1431
+
+            cmp QWORD PTR [RBP-536],0                          # EA: 0x1433
+            jne .L_1295                                        # EA: 0x143b
+.L_1441:
+
+            cmp QWORD PTR [RBP-536],0                          # EA: 0x1441
+            jne .L_1489                                        # EA: 0x1449
+
+            mov EDI,10                                         # EA: 0x144b
+            call putchar@PLT                                   # EA: 0x1450
+
+            mov EDX,DWORD PTR [RBP-572]                        # EA: 0x1455
+            mov RAX,QWORD PTR [RBP-544]                        # EA: 0x145b
+            mov ESI,EDX                                        # EA: 0x1462
+            mov RDI,RAX                                        # EA: 0x1464
+            call printWord                                     # EA: 0x1467
+
+            mov RAX,QWORD PTR [RBP-552]                        # EA: 0x146c
+            mov RSI,RAX                                        # EA: 0x1473
+            lea RDI,QWORD PTR [RIP+.L_17d0]                    # EA: 0x1476
+            mov EAX,0                                          # EA: 0x147d
+            call printf@PLT                                    # EA: 0x1482
+
+            jmp .L_14c5                                        # EA: 0x1487
+.L_1489:
+
+            mov EDI,10                                         # EA: 0x1489
+            call putchar@PLT                                   # EA: 0x148e
+
+            mov RDX,QWORD PTR [RBP-560]                        # EA: 0x1493
+            mov EAX,DWORD PTR [RBP-588]                        # EA: 0x149a
+            mov RSI,RDX                                        # EA: 0x14a0
+            mov EDI,EAX                                        # EA: 0x14a3
+            call printBody                                     # EA: 0x14a5
+
+            mov RAX,QWORD PTR [RBP-552]                        # EA: 0x14aa
+            mov RSI,RAX                                        # EA: 0x14b1
+            lea RDI,QWORD PTR [RIP+.L_17f0]                    # EA: 0x14b4
+            mov EAX,0                                          # EA: 0x14bb
+            call printf@PLT                                    # EA: 0x14c0
+.L_14c5:
+
+            mov RAX,QWORD PTR [RBP-560]                        # EA: 0x14c5
+            mov RDI,RAX                                        # EA: 0x14cc
+            call free@PLT                                      # EA: 0x14cf
+
+            mov RAX,QWORD PTR [RBP-552]                        # EA: 0x14d4
+            mov RDI,RAX                                        # EA: 0x14db
+            call free@PLT                                      # EA: 0x14de
+
+            mov RAX,QWORD PTR [RBP-544]                        # EA: 0x14e3
+            mov RDI,RAX                                        # EA: 0x14ea
+            call free@PLT                                      # EA: 0x14ed
+
+            mov EAX,0                                          # EA: 0x14f2
+.L_14f7:
+
+            mov RCX,QWORD PTR [RBP-8]                          # EA: 0x14f7
+            xor RCX,QWORD PTR FS:[40]                          # EA: 0x14fb
+            je .L_150b                                         # EA: 0x1504
+
+            call __stack_chk_fail@PLT                          # EA: 0x1506
+.L_150b:
+
+            leave                                              # EA: 0x150b
+            ret                                                # EA: 0x150c
+
+            nop                                                # EA: 0x150d
+            nop                                                # EA: 0x150e
+            nop                                                # EA: 0x150f
+#===================================
+# end section .text
+#===================================
+
+#===================================
+.section .rodata ,"a",@progbits
+#===================================
+
+.align 20
+          .byte 0x1                                            # EA: 0x15a0
+          .byte 0x0                                            # EA: 0x15a1
+          .byte 0x2                                            # EA: 0x15a2
+          .byte 0x0                                            # EA: 0x15a3
+          .byte 0x0                                            # EA: 0x15a4
+          .byte 0x0                                            # EA: 0x15a5
+          .byte 0x0                                            # EA: 0x15a6
+          .byte 0x0                                            # EA: 0x15a7
+          .byte 0x0                                            # EA: 0x15a8
+          .byte 0x0                                            # EA: 0x15a9
+          .byte 0x0                                            # EA: 0x15aa
+          .byte 0x0                                            # EA: 0x15ab
+          .byte 0x0                                            # EA: 0x15ac
+          .byte 0x0                                            # EA: 0x15ad
+          .byte 0x0                                            # EA: 0x15ae
+          .byte 0x0                                            # EA: 0x15af
+          .byte 0x0                                            # EA: 0x15b0
+          .byte 0x0                                            # EA: 0x15b1
+          .byte 0x0                                            # EA: 0x15b2
+          .byte 0x0                                            # EA: 0x15b3
+          .byte 0x0                                            # EA: 0x15b4
+          .byte 0x0                                            # EA: 0x15b5
+          .byte 0x0                                            # EA: 0x15b6
+          .byte 0x0                                            # EA: 0x15b7
+          .byte 0x0                                            # EA: 0x15b8
+          .byte 0x0                                            # EA: 0x15b9
+          .byte 0x0                                            # EA: 0x15ba
+          .byte 0x0                                            # EA: 0x15bb
+          .byte 0x0                                            # EA: 0x15bc
+          .byte 0x0                                            # EA: 0x15bd
+          .byte 0x0                                            # EA: 0x15be
+          .byte 0x0                                            # EA: 0x15bf
+.L_15c0:
+          .string "\tMistakes :%d\n"                           # EA: 0x15c0
+          .zero 1                                              # EA: 0x15cf
+.L_15d0:
+          .string "\t _________\n\t|         |\n\t|        %c %c\n\t|        %c%c%c\n\t|        %c %c\n\t|             \n\t|             " # EA: 0x15d0
+          .zero 2                                              # EA: 0x163a
+.L_163c:
+          .long .L_fc4-.L_163c                                 # EA: 0x163c
+          .long .L_fb0-.L_163c                                 # EA: 0x1640
+          .long .L_fa3-.L_163c                                 # EA: 0x1644
+          .long .L_f96-.L_163c                                 # EA: 0x1648
+          .long .L_f89-.L_163c                                 # EA: 0x164c
+          .long .L_f7c-.L_163c                                 # EA: 0x1650
+          .long .L_f6f-.L_163c                                 # EA: 0x1654
+.L_1658:
+          .string "%c "                                        # EA: 0x1658
+.L_165c:
+          .string "\n"                                         # EA: 0x165c
+.L_165e:
+          .string "\nEnter hey: "                              # EA: 0x165e
+.L_166b:
+          .string "\nsorry."                                   # EA: 0x166b
+          .zero 5                                              # EA: 0x1673
+.L_1678:
+          .string "\n\t Be aware you can be hanged!!."         # EA: 0x1678
+.L_1699:
+          .string "\n\n\t Rules : "                            # EA: 0x1699
+          .zero 2                                              # EA: 0x16a6
+.L_16a8:
+          .string "\n\t - Maximum 6 mistakes are allowed."     # EA: 0x16a8
+          .zero 3                                              # EA: 0x16cd
+.L_16d0:
+          .string "\n\t - All alphabet are in lower case."     # EA: 0x16d0
+          .zero 3                                              # EA: 0x16f5
+.L_16f8:
+          .string "\n\t - All words are name of very popular Websites. eg. Google" # EA: 0x16f8
+          .zero 3                                              # EA: 0x1735
+.L_1738:
+          .string "\n\t - If you enjoy continue, otherwise close it." # EA: 0x1738
+.L_1768:
+          .string "\n\t Syntax : Alphabet"                     # EA: 0x1768
+.L_177d:
+          .string "\n\t Example : a \n"                        # EA: 0x177d
+.L_178e:
+          .string "\tFalse Letters : "                         # EA: 0x178e
+.L_17a0:
+          .string "None"                                       # EA: 0x17a0
+          .zero 3                                              # EA: 0x17a5
+.L_17a8:
+          .string "\tGive me a alphabet in lower case : "      # EA: 0x17a8
+.L_17cd:
+          .string "%c"                                         # EA: 0x17cd
+.L_17d0:
+          .string "\n\tCongrats! You have won : %s\n\n"        # EA: 0x17d0
+.L_17f0:
+          .string "\n\n\tBetter try next time. Word was %s\n\n"# EA: 0x17f0
+          .zero 9                                              # EA: 0x1817
+.L_1820:
+          .string "N~mqOlJ^tZletXodeYgs"                       # EA: 0x1820
+          .byte 0x0                                            # EA: 0x1835
+          .byte 0x0                                            # EA: 0x1836
+          .byte 0x0                                            # EA: 0x1837
+          .byte 0x0                                            # EA: 0x1838
+          .byte 0x0                                            # EA: 0x1839
+          .byte 0x0                                            # EA: 0x183a
+          .byte 0x0                                            # EA: 0x183b
+          .byte 0x0                                            # EA: 0x183c
+          .byte 0x0                                            # EA: 0x183d
+          .byte 0x0                                            # EA: 0x183e
+          .byte 0x0                                            # EA: 0x183f
+          .byte 0x0                                            # EA: 0x1840
+          .byte 0x0                                            # EA: 0x1841
+          .byte 0x0                                            # EA: 0x1842
+          .byte 0x0                                            # EA: 0x1843
+          .byte 0x0                                            # EA: 0x1844
+          .byte 0x0                                            # EA: 0x1845
+          .byte 0x0                                            # EA: 0x1846
+          .byte 0x0                                            # EA: 0x1847
+          .byte 0x67                                           # EA: 0x1848
+          .byte 0x43                                           # EA: 0x1849
+          .byte 0x6e                                           # EA: 0x184a
+          .byte 0x44                                           # EA: 0x184b
+          .byte 0x49                                           # EA: 0x184c
+          .byte 0x66                                           # EA: 0x184d
+          .byte 0x46                                           # EA: 0x184e
+          .byte 0x51                                           # EA: 0x184f
+          .byte 0x65                                           # EA: 0x1850
+          .byte 0x5e                                           # EA: 0x1851
+          .byte 0x43                                           # EA: 0x1852
+          .byte 0x64                                           # EA: 0x1853
+          .byte 0x50                                           # EA: 0x1854
+          .byte 0x5e                                           # EA: 0x1855
+          .byte 0x5e                                           # EA: 0x1856
+          .byte 0x42                                           # EA: 0x1857
+          .byte 0x7b                                           # EA: 0x1858
+          .byte 0x68                                           # EA: 0x1859
+          .byte 0x5a                                           # EA: 0x185a
+          .byte 0x70                                           # EA: 0x185b
+          .byte 0x65                                           # EA: 0x185c
+          .byte 0x4c                                           # EA: 0x185d
+          .byte 0x41                                           # EA: 0x185e
+          .byte 0x5e                                           # EA: 0x185f
+          .byte 0x68                                           # EA: 0x1860
+          .byte 0x76                                           # EA: 0x1861
+          .byte 0x0                                            # EA: 0x1862
+          .byte 0x0                                            # EA: 0x1863
+          .byte 0x0                                            # EA: 0x1864
+          .byte 0x0                                            # EA: 0x1865
+          .byte 0x0                                            # EA: 0x1866
+          .byte 0x0                                            # EA: 0x1867
+          .byte 0x0                                            # EA: 0x1868
+          .byte 0x0                                            # EA: 0x1869
+          .byte 0x0                                            # EA: 0x186a
+          .byte 0x0                                            # EA: 0x186b
+          .byte 0x0                                            # EA: 0x186c
+          .byte 0x0                                            # EA: 0x186d
+          .byte 0x0                                            # EA: 0x186e
+          .byte 0x0                                            # EA: 0x186f
+          .byte 0x37                                           # EA: 0x1870
+          .byte 0x75                                           # EA: 0x1871
+          .byte 0x72                                           # EA: 0x1872
+          .byte 0x74                                           # EA: 0x1873
+          .byte 0x72                                           # EA: 0x1874
+          .byte 0x74                                           # EA: 0x1875
+          .byte 0x77                                           # EA: 0x1876
+          .byte 0x51                                           # EA: 0x1877
+          .byte 0x76                                           # EA: 0x1878
+          .byte 0x7b                                           # EA: 0x1879
+          .byte 0x64                                           # EA: 0x187a
+          .byte 0x74                                           # EA: 0x187b
+          .byte 0x60                                           # EA: 0x187c
+          .byte 0x3e                                           # EA: 0x187d
+          .byte 0x5e                                           # EA: 0x187e
+          .byte 0x7d                                           # EA: 0x187f
+          .byte 0x46                                           # EA: 0x1880
+          .byte 0x61                                           # EA: 0x1881
+          .byte 0x52                                           # EA: 0x1882
+          .byte 0x5d                                           # EA: 0x1883
+          .byte 0x69                                           # EA: 0x1884
+          .byte 0x5d                                           # EA: 0x1885
+          .byte 0x58                                           # EA: 0x1886
+          .byte 0x55                                           # EA: 0x1887
+          .byte 0x75                                           # EA: 0x1888
+          .byte 0x67                                           # EA: 0x1889
+          .byte 0x5e                                           # EA: 0x188a
+          .byte 0x47                                           # EA: 0x188b
+          .byte 0x49                                           # EA: 0x188c
+          .byte 0x0                                            # EA: 0x188d
+          .byte 0x0                                            # EA: 0x188e
+          .byte 0x0                                            # EA: 0x188f
+          .byte 0x0                                            # EA: 0x1890
+          .byte 0x0                                            # EA: 0x1891
+          .byte 0x0                                            # EA: 0x1892
+          .byte 0x0                                            # EA: 0x1893
+          .byte 0x0                                            # EA: 0x1894
+          .byte 0x0                                            # EA: 0x1895
+          .byte 0x0                                            # EA: 0x1896
+          .byte 0x0                                            # EA: 0x1897
+          .byte 0x61                                           # EA: 0x1898
+          .byte 0x53                                           # EA: 0x1899
+          .byte 0x77                                           # EA: 0x189a
+          .byte 0x66                                           # EA: 0x189b
+          .byte 0x58                                           # EA: 0x189c
+          .byte 0x73                                           # EA: 0x189d
+          .byte 0x78                                           # EA: 0x189e
+          .byte 0x4f                                           # EA: 0x189f
+          .byte 0x73                                           # EA: 0x18a0
+          .byte 0x57                                           # EA: 0x18a1
+          .byte 0x41                                           # EA: 0x18a2
+          .byte 0x6c                                           # EA: 0x18a3
+          .byte 0x58                                           # EA: 0x18a4
+          .byte 0x53                                           # EA: 0x18a5
+          .byte 0x63                                           # EA: 0x18a6
+          .byte 0x56                                           # EA: 0x18a7
+          .byte 0x51                                           # EA: 0x18a8
+          .byte 0x6d                                           # EA: 0x18a9
+          .byte 0x6a                                           # EA: 0x18aa
+          .byte 0x41                                           # EA: 0x18ab
+          .byte 0x57                                           # EA: 0x18ac
+          .byte 0x4a                                           # EA: 0x18ad
+          .byte 0x47                                           # EA: 0x18ae
+          .byte 0x0                                            # EA: 0x18af
+          .byte 0x0                                            # EA: 0x18b0
+          .byte 0x0                                            # EA: 0x18b1
+          .byte 0x0                                            # EA: 0x18b2
+          .byte 0x0                                            # EA: 0x18b3
+          .byte 0x0                                            # EA: 0x18b4
+          .byte 0x0                                            # EA: 0x18b5
+          .byte 0x0                                            # EA: 0x18b6
+          .byte 0x0                                            # EA: 0x18b7
+          .byte 0x0                                            # EA: 0x18b8
+          .byte 0x0                                            # EA: 0x18b9
+          .byte 0x0                                            # EA: 0x18ba
+          .byte 0x0                                            # EA: 0x18bb
+          .byte 0x0                                            # EA: 0x18bc
+          .byte 0x0                                            # EA: 0x18bd
+          .byte 0x0                                            # EA: 0x18be
+          .byte 0x0                                            # EA: 0x18bf
+          .byte 0x63                                           # EA: 0x18c0
+          .byte 0x72                                           # EA: 0x18c1
+          .byte 0x75                                           # EA: 0x18c2
+          .byte 0x44                                           # EA: 0x18c3
+          .byte 0x3d                                           # EA: 0x18c4
+          .byte 0x69                                           # EA: 0x18c5
+          .byte 0x64                                           # EA: 0x18c6
+          .byte 0x64                                           # EA: 0x18c7
+          .byte 0x75                                           # EA: 0x18c8
+          .byte 0x76                                           # EA: 0x18c9
+          .byte 0x55                                           # EA: 0x18ca
+          .byte 0x64                                           # EA: 0x18cb
+          .byte 0x72                                           # EA: 0x18cc
+          .byte 0x3d                                           # EA: 0x18cd
+          .byte 0x67                                           # EA: 0x18ce
+          .byte 0x6d                                           # EA: 0x18cf
+          .byte 0x63                                           # EA: 0x18d0
+          .byte 0x61                                           # EA: 0x18d1
+          .byte 0x75                                           # EA: 0x18d2
+          .byte 0x43                                           # EA: 0x18d3
+          .byte 0x6d                                           # EA: 0x18d4
+          .byte 0x67                                           # EA: 0x18d5
+          .byte 0x5d                                           # EA: 0x18d6
+          .byte 0x0                                            # EA: 0x18d7
+          .byte 0x0                                            # EA: 0x18d8
+          .byte 0x0                                            # EA: 0x18d9
+          .byte 0x0                                            # EA: 0x18da
+          .byte 0x0                                            # EA: 0x18db
+          .byte 0x0                                            # EA: 0x18dc
+          .byte 0x0                                            # EA: 0x18dd
+          .byte 0x0                                            # EA: 0x18de
+          .byte 0x0                                            # EA: 0x18df
+          .byte 0x0                                            # EA: 0x18e0
+          .byte 0x0                                            # EA: 0x18e1
+          .byte 0x0                                            # EA: 0x18e2
+          .byte 0x0                                            # EA: 0x18e3
+          .byte 0x0                                            # EA: 0x18e4
+          .byte 0x0                                            # EA: 0x18e5
+          .byte 0x0                                            # EA: 0x18e6
+          .byte 0x0                                            # EA: 0x18e7
+          .byte 0x42                                           # EA: 0x18e8
+          .byte 0x51                                           # EA: 0x18e9
+          .byte 0x74                                           # EA: 0x18ea
+          .byte 0x60                                           # EA: 0x18eb
+          .byte 0x7a                                           # EA: 0x18ec
+          .byte 0x6e                                           # EA: 0x18ed
+          .byte 0x63                                           # EA: 0x18ee
+          .byte 0x79                                           # EA: 0x18ef
+          .byte 0x70                                           # EA: 0x18f0
+          .byte 0x46                                           # EA: 0x18f1
+          .byte 0x56                                           # EA: 0x18f2
+          .byte 0x6a                                           # EA: 0x18f3
+          .byte 0x76                                           # EA: 0x18f4
+          .byte 0x49                                           # EA: 0x18f5
+          .byte 0x61                                           # EA: 0x18f6
+          .byte 0x54                                           # EA: 0x18f7
+          .byte 0x6c                                           # EA: 0x18f8
+          .byte 0x5d                                           # EA: 0x18f9
+          .byte 0x75                                           # EA: 0x18fa
+          .byte 0x3d                                           # EA: 0x18fb
+          .byte 0x5f                                           # EA: 0x18fc
+          .byte 0x3f                                           # EA: 0x18fd
+          .byte 0x41                                           # EA: 0x18fe
+          .byte 0x61                                           # EA: 0x18ff
+          .byte 0x7d                                           # EA: 0x1900
+          .byte 0x46                                           # EA: 0x1901
+          .byte 0x0                                            # EA: 0x1902
+          .byte 0x0                                            # EA: 0x1903
+          .byte 0x0                                            # EA: 0x1904
+          .byte 0x0                                            # EA: 0x1905
+          .byte 0x0                                            # EA: 0x1906
+          .byte 0x0                                            # EA: 0x1907
+          .byte 0x0                                            # EA: 0x1908
+          .byte 0x0                                            # EA: 0x1909
+          .byte 0x0                                            # EA: 0x190a
+          .byte 0x0                                            # EA: 0x190b
+          .byte 0x0                                            # EA: 0x190c
+          .byte 0x0                                            # EA: 0x190d
+          .byte 0x0                                            # EA: 0x190e
+          .byte 0x0                                            # EA: 0x190f
+          .byte 0x69                                           # EA: 0x1910
+          .byte 0x4c                                           # EA: 0x1911
+          .byte 0x76                                           # EA: 0x1912
+          .byte 0x6b                                           # EA: 0x1913
+          .byte 0x4b                                           # EA: 0x1914
+          .byte 0x64                                           # EA: 0x1915
+          .byte 0x54                                           # EA: 0x1916
+          .byte 0x60                                           # EA: 0x1917
+          .byte 0x79                                           # EA: 0x1918
+          .byte 0x75                                           # EA: 0x1919
+          .byte 0x7e                                           # EA: 0x191a
+          .byte 0x6d                                           # EA: 0x191b
+          .byte 0x57                                           # EA: 0x191c
+          .byte 0x6a                                           # EA: 0x191d
+          .byte 0x5b                                           # EA: 0x191e
+          .byte 0x5e                                           # EA: 0x191f
+          .byte 0x67                                           # EA: 0x1920
+          .byte 0x63                                           # EA: 0x1921
+          .byte 0x4f                                           # EA: 0x1922
+          .byte 0x7c                                           # EA: 0x1923
+          .byte 0x0                                            # EA: 0x1924
+          .byte 0x0                                            # EA: 0x1925
+          .byte 0x0                                            # EA: 0x1926
+          .byte 0x0                                            # EA: 0x1927
+          .byte 0x0                                            # EA: 0x1928
+          .byte 0x0                                            # EA: 0x1929
+          .byte 0x0                                            # EA: 0x192a
+          .byte 0x0                                            # EA: 0x192b
+          .byte 0x0                                            # EA: 0x192c
+          .byte 0x0                                            # EA: 0x192d
+          .byte 0x0                                            # EA: 0x192e
+          .byte 0x0                                            # EA: 0x192f
+          .byte 0x0                                            # EA: 0x1930
+          .byte 0x0                                            # EA: 0x1931
+          .byte 0x0                                            # EA: 0x1932
+          .byte 0x0                                            # EA: 0x1933
+          .byte 0x0                                            # EA: 0x1934
+          .byte 0x0                                            # EA: 0x1935
+          .byte 0x0                                            # EA: 0x1936
+          .byte 0x0                                            # EA: 0x1937
+          .byte 0x6a                                           # EA: 0x1938
+          .byte 0x53                                           # EA: 0x1939
+          .byte 0x69                                           # EA: 0x193a
+          .byte 0x4c                                           # EA: 0x193b
+          .byte 0x79                                           # EA: 0x193c
+          .byte 0x7a                                           # EA: 0x193d
+          .byte 0x4a                                           # EA: 0x193e
+          .byte 0x3d                                           # EA: 0x193f
+          .byte 0x76                                           # EA: 0x1940
+          .byte 0x50                                           # EA: 0x1941
+          .byte 0x6d                                           # EA: 0x1942
+          .byte 0x6e                                           # EA: 0x1943
+          .byte 0x76                                           # EA: 0x1944
+          .byte 0x5e                                           # EA: 0x1945
+          .byte 0x60                                           # EA: 0x1946
+          .byte 0x4e                                           # EA: 0x1947
+          .byte 0x5d                                           # EA: 0x1948
+          .byte 0x5e                                           # EA: 0x1949
+          .byte 0x3e                                           # EA: 0x194a
+          .byte 0x56                                           # EA: 0x194b
+          .byte 0x69                                           # EA: 0x194c
+          .byte 0x41                                           # EA: 0x194d
+          .byte 0x43                                           # EA: 0x194e
+          .byte 0x5e                                           # EA: 0x194f
+          .byte 0x7a                                           # EA: 0x1950
+          .byte 0x5f                                           # EA: 0x1951
+          .byte 0x0                                            # EA: 0x1952
+          .byte 0x0                                            # EA: 0x1953
+          .byte 0x0                                            # EA: 0x1954
+          .byte 0x0                                            # EA: 0x1955
+          .byte 0x0                                            # EA: 0x1956
+          .byte 0x0                                            # EA: 0x1957
+          .byte 0x0                                            # EA: 0x1958
+          .byte 0x0                                            # EA: 0x1959
+          .byte 0x0                                            # EA: 0x195a
+          .byte 0x0                                            # EA: 0x195b
+          .byte 0x0                                            # EA: 0x195c
+          .byte 0x0                                            # EA: 0x195d
+          .byte 0x0                                            # EA: 0x195e
+          .byte 0x0                                            # EA: 0x195f
+          .byte 0x78                                           # EA: 0x1960
+          .byte 0x6f                                           # EA: 0x1961
+          .byte 0x7c                                           # EA: 0x1962
+          .byte 0x52                                           # EA: 0x1963
+          .byte 0x71                                           # EA: 0x1964
+          .byte 0x71                                           # EA: 0x1965
+          .byte 0x68                                           # EA: 0x1966
+          .byte 0x4f                                           # EA: 0x1967
+          .byte 0x7c                                           # EA: 0x1968
+          .byte 0x6e                                           # EA: 0x1969
+          .byte 0x4e                                           # EA: 0x196a
+          .byte 0x73                                           # EA: 0x196b
+          .byte 0x74                                           # EA: 0x196c
+          .byte 0x6a                                           # EA: 0x196d
+          .byte 0x6d                                           # EA: 0x196e
+          .byte 0x7a                                           # EA: 0x196f
+          .byte 0x66                                           # EA: 0x1970
+          .byte 0x69                                           # EA: 0x1971
+          .byte 0x75                                           # EA: 0x1972
+          .byte 0x6f                                           # EA: 0x1973
+          .byte 0x69                                           # EA: 0x1974
+          .byte 0x46                                           # EA: 0x1975
+          .byte 0x66                                           # EA: 0x1976
+          .byte 0x68                                           # EA: 0x1977
+          .byte 0x77                                           # EA: 0x1978
+          .byte 0x74                                           # EA: 0x1979
+          .byte 0x64                                           # EA: 0x197a
+          .byte 0x68                                           # EA: 0x197b
+          .byte 0x7e                                           # EA: 0x197c
+          .byte 0x0                                            # EA: 0x197d
+          .byte 0x0                                            # EA: 0x197e
+          .byte 0x0                                            # EA: 0x197f
+          .byte 0x0                                            # EA: 0x1980
+          .byte 0x0                                            # EA: 0x1981
+          .byte 0x0                                            # EA: 0x1982
+          .byte 0x0                                            # EA: 0x1983
+          .byte 0x0                                            # EA: 0x1984
+          .byte 0x0                                            # EA: 0x1985
+          .byte 0x0                                            # EA: 0x1986
+          .byte 0x0                                            # EA: 0x1987
+          .byte 0x4f                                           # EA: 0x1988
+          .byte 0x48                                           # EA: 0x1989
+          .byte 0x6b                                           # EA: 0x198a
+          .byte 0x74                                           # EA: 0x198b
+          .byte 0x74                                           # EA: 0x198c
+          .byte 0x76                                           # EA: 0x198d
+          .byte 0x78                                           # EA: 0x198e
+          .byte 0x64                                           # EA: 0x198f
+          .byte 0x70                                           # EA: 0x1990
+          .byte 0x7c                                           # EA: 0x1991
+          .byte 0x5b                                           # EA: 0x1992
+          .byte 0x6e                                           # EA: 0x1993
+          .byte 0x6e                                           # EA: 0x1994
+          .byte 0x57                                           # EA: 0x1995
+          .byte 0x5d                                           # EA: 0x1996
+          .byte 0x44                                           # EA: 0x1997
+          .byte 0x72                                           # EA: 0x1998
+          .byte 0x67                                           # EA: 0x1999
+          .byte 0x61                                           # EA: 0x199a
+          .byte 0x6f                                           # EA: 0x199b
+          .byte 0x6d                                           # EA: 0x199c
+          .byte 0x64                                           # EA: 0x199d
+          .byte 0x71                                           # EA: 0x199e
+          .byte 0x0                                            # EA: 0x199f
+          .byte 0x0                                            # EA: 0x19a0
+          .byte 0x0                                            # EA: 0x19a1
+          .byte 0x0                                            # EA: 0x19a2
+          .byte 0x0                                            # EA: 0x19a3
+          .byte 0x0                                            # EA: 0x19a4
+          .byte 0x0                                            # EA: 0x19a5
+          .byte 0x0                                            # EA: 0x19a6
+          .byte 0x0                                            # EA: 0x19a7
+          .byte 0x0                                            # EA: 0x19a8
+          .byte 0x0                                            # EA: 0x19a9
+          .byte 0x0                                            # EA: 0x19aa
+          .byte 0x0                                            # EA: 0x19ab
+          .byte 0x0                                            # EA: 0x19ac
+          .byte 0x0                                            # EA: 0x19ad
+          .byte 0x0                                            # EA: 0x19ae
+          .byte 0x0                                            # EA: 0x19af
+#===================================
+# end section .rodata
+#===================================
+
+#===================================
+.section .init_array ,"wa"
+#===================================
+
+.align 8
+__frame_dummy_init_array_entry:
+__init_array_start:
+#===================================
+# end section .init_array
+#===================================
+
+#===================================
+.section .fini_array ,"wa"
+#===================================
+
+.align 8
+__do_global_dtors_aux_fini_array_entry:
+__init_array_end:
+#===================================
+# end section .fini_array
+#===================================
+
+#===================================
+.data
+#===================================
+
+.align 8
+#-----------------------------------
+.weak data_start
+.type data_start, @notype
+#-----------------------------------
+data_start:
+          .zero 8                                              # EA: 0x202000
+          .quad 2105352                                        # EA: 0x202008
+#===================================
+# end section .data
+#===================================
+
+#===================================
+.bss
+#===================================
+
+.align 10
+#-----------------------------------
+.globl stdin_copy
+.type stdin_copy, @object
+#-----------------------------------
+stdin_copy:
+#-----------------------------------
+.globl _edata
+.type _edata, @notype
+#-----------------------------------
+_edata:
+          .zero 8                                              # EA: 0x202010
+completed.7698:
+          .zero 1                                              # EA: 0x202018
+#-----------------------------------
+.globl srand_called
+.type srand_called, @object
+#-----------------------------------
+srand_called:
+          .zero 7                                              # EA: 0x202019
+#-----------------------------------
+.globl _end
+.type _end, @notype
+#-----------------------------------
+_end:
+#===================================
+# end section .bss
+#===================================
+#-----------------------------------
+.weak __gmon_start__
+.type __gmon_start__, @notype
+#-----------------------------------
+#-----------------------------------
+.weak _ITM_registerTMCloneTable
+.type _ITM_registerTMCloneTable, @notype
+#-----------------------------------
+#-----------------------------------
+.weak _ITM_deregisterTMCloneTable
+.type _ITM_deregisterTMCloneTable, @notype
+#-----------------------------------
+#-----------------------------------
+.weak __cxa_finalize
+.type __cxa_finalize, @function
+#-----------------------------------
+#-----------------------------------
+.globl time
+.type time, @function
+#-----------------------------------
+#-----------------------------------
+.globl strnlen
+.type strnlen, @function
+#-----------------------------------
+#-----------------------------------
+.globl strlen
+.type strlen, @function
+#-----------------------------------
+#-----------------------------------
+.globl strchr
+.type strchr, @function
+#-----------------------------------
+#-----------------------------------
+.globl srand
+.type srand, @function
+#-----------------------------------
+#-----------------------------------
+.globl setvbuf
+.type setvbuf, @function
+#-----------------------------------
+#-----------------------------------
+.globl rand
+.type rand, @function
+#-----------------------------------
+#-----------------------------------
+.globl puts
+.type puts, @function
+#-----------------------------------
+#-----------------------------------
+.globl putchar
+.type putchar, @function
+#-----------------------------------
+#-----------------------------------
+.globl printf
+.type printf, @function
+#-----------------------------------
+#-----------------------------------
+.globl memset
+.type memset, @function
+#-----------------------------------
+#-----------------------------------
+.globl malloc
+.type malloc, @function
+#-----------------------------------
+#-----------------------------------
+.globl getchar
+.type getchar, @function
+#-----------------------------------
+#-----------------------------------
+.globl free
+.type free, @function
+#-----------------------------------
+#-----------------------------------
+.globl fgets
+.type fgets, @function
+#-----------------------------------
+#-----------------------------------
+.globl __stack_chk_fail
+.type __stack_chk_fail, @function
+#-----------------------------------
+#-----------------------------------
+.globl __libc_start_main
+.type __libc_start_main, @function
+#-----------------------------------
+#-----------------------------------
+.globl __isoc99_scanf
+.type __isoc99_scanf, @function
+#-----------------------------------
+#-----------------------------------
+.globl MD5_Update
+.type MD5_Update, @function
+#-----------------------------------
+#-----------------------------------
+.globl MD5_Init
+.type MD5_Init, @function
+#-----------------------------------
+#-----------------------------------
+.globl MD5_Final
+.type MD5_Final, @function
+#-----------------------------------

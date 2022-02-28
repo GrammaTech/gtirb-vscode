@@ -7,8 +7,6 @@ from uuid import UUID
 import gtirb
 from gtirb_lsp_server.server import (
     UUIDEncoder,
-    blocks_for_function_name,
-    first_line_for_blocks,
     first_line_for_uuid,
     get_line_offset,
     line_offsets_to_maps,
@@ -23,11 +21,12 @@ from gtirb_lsp_server.server import (
     apply_changes_to_indexes,
     block_text,
     offset_to_line,
-    block_byte_interval,
     function_uuid_for_name,
     function_decompilations,
     parse_function_name,
     address_to_line,
+    isolate_token,
+    parse_listing_uri,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -89,16 +88,6 @@ class InitialIndexTestDriver(unittest.TestCase):
         self.assertTrue(len(offset_indexed_names) > 0)
         self.assertTrue(all(map(lambda it: isinstance(it, str), offset_indexed_names)))
 
-    def test_blocks_for_function_name(self):
-        blocks = blocks_for_function_name(self.gtirb, "generateMessageID")
-        self.assertTrue(len(blocks) > 0)
-
-    def test_block_byte_interval(self):
-        blocks = blocks_for_function_name(self.gtirb, "generateMessageID")
-        self.assertTrue(
-            isinstance(block_byte_interval(self.gtirb, next(iter(blocks))), gtirb.ByteInterval)
-        )
-
     def test_first_line_for_uuid(self):
         (offset_by_line, line_by_offset) = line_offsets_to_maps(
             self.gtirb, get_line_offset(self.gtirb, self.asm)
@@ -106,15 +95,6 @@ class InitialIndexTestDriver(unittest.TestCase):
         uuid_w_line = list(offset_by_line.values())[0].element_id.uuid
         first_line = first_line_for_uuid(offset_by_line, uuid_w_line)
         self.assertTrue(isinstance(first_line, int))
-
-    def test_function_blocks_to_lines(self):
-        (offsets_by_line, lines_by_offset) = line_offsets_to_maps(
-            self.gtirb, get_line_offset(self.gtirb, self.asm)
-        )
-        blocks = blocks_for_function_name(self.gtirb, "freeservers")
-        self.assertTrue(len(blocks) > 0)
-        line = first_line_for_blocks(offsets_by_line, blocks)
-        self.assertTrue(isinstance(line, int))
 
     def test_preceding_function_line(self):
         func_name = "freeservers"
@@ -314,3 +294,65 @@ class ParseFunctionNameTestDriver(unittest.TestCase):
 
         name = parse_function_name("main:")
         self.assertEqual(name, "main")
+
+
+class IsolateTokenTestDriver(unittest.TestCase):
+    def test_isoate_token(self):
+
+        line = " mov QWORD PTR [+group],RAX"
+        token = isolate_token(line, 17)
+        self.assertEqual(token, "group")
+
+        line = " lui $v0,%hi(.L_400bf4)    "
+        token = isolate_token(line, 13)
+        self.assertEqual(token, ".L_400bf4")
+
+        line = "    addiu $a0,$v0,%lo(.L_400bf4)"
+        token = isolate_token(line, 30)
+        self.assertEqual(token, ".L_400bf4")
+
+        line = " lw $v0,%got(fwrite"
+        token = isolate_token(line, 13)
+        self.assertEqual(token, "fwrite")
+
+        line = ".L_11010:"
+        token = isolate_token(line, 0)
+        self.assertEqual(token, ".L_11010")
+
+        line = " call __isoc99_scanf@PLT"
+        token = isolate_token(line, len(line) - 1)
+        self.assertEqual(token, "__isoc99_scanf@PLT")
+
+        line = " call __isoc99_scanf@PLT"
+        token = isolate_token(line, len(line) + 1)
+        self.assertEqual(token, "")
+
+        line = "      "
+        token = isolate_token(line, 1)
+        self.assertEqual(token, "")
+
+
+class ParseListingUriTestDriver(unittest.TestCase):
+    def test_parse_listing_uri(self):
+
+        uri = "/not/a/file/uri"
+        asmfile, gtirbfile = parse_listing_uri(uri)
+        self.assertEqual(asmfile, None)
+        self.assertEqual(gtirbfile, None)
+
+        uri = "file:///not/a/good/uri"
+        asmfile, gtirbfile = parse_listing_uri(uri)
+        self.assertEqual(asmfile, None)
+        self.assertEqual(gtirbfile, None)
+
+        uri = "file:///home/real/uri/.vscode.real.gtirb/x64/real.view"
+        asmfile, gtirbfile = parse_listing_uri(uri)
+        self.assertEqual(asmfile, "/home/real/uri/.vscode.real.gtirb/x64/real.view")
+        self.assertEqual(gtirbfile, "/home/real/uri/real.gtirb")
+
+        uri = "file:///c%3A/Users/real/windows/workspace/.vscode.real.gtirb/x64/real.view"
+        asmfile, gtirbfile = parse_listing_uri(uri)
+        self.assertEqual(
+            asmfile, "c:/Users/real/windows/workspace/.vscode.real.gtirb/x64/real.view"
+        )
+        self.assertEqual(gtirbfile, "c:/Users/real/windows/workspace/real.gtirb")
