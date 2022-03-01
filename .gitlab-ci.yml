@@ -1,5 +1,5 @@
 variables:
-  COVERAGE_FAIL_BELOW: 50
+  COVERAGE_FAIL_BELOW: 80
 
 stages:
     - check-format
