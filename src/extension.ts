@@ -127,7 +127,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     if (hostAddr === 'stdio') {
-        client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], cwd);
+        client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server.gtirb_lsp_server"], cwd);
     } else {
         client = startLangServerTCP(port!, hostAddr!);
     }

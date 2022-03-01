@@ -20,7 +20,7 @@ from gtirb_lsp_server.server import (
     get_line_from_address,
     get_address_of_symbol,
 )
-from gtirb_lsp_server.test.fake_server import FakeServer, FakeDocument
+from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
 
 # Create a fake server
 server = FakeServer()

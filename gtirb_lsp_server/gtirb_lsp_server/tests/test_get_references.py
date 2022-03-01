@@ -19,7 +19,7 @@ from pygls.lsp.types import (
     Position,
 )
 from gtirb_lsp_server.server import did_open, did_close, get_references
-from gtirb_lsp_server.test.fake_server import FakeServer, FakeDocument
+from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
 
 # Create a fake server
 server = FakeServer()

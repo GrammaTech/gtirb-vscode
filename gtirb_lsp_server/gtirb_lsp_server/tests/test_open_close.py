@@ -13,7 +13,7 @@ from pygls.lsp.types import (
     TextDocumentItem,
 )
 from gtirb_lsp_server.server import did_open, did_close
-from gtirb_lsp_server.test.fake_server import FakeServer, FakeDocument
+from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
 
 # Create a fake server
 server = FakeServer()

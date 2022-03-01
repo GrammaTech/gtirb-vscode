@@ -523,7 +523,7 @@ main:
 
             mov RAX,QWORD PTR [RBP-568]                        # EA: 0x10f2
             mov RDI,RAX                                        # EA: 0x10f9
-            mov EAX,0                                          # EA: 0x10fc
+            call keyChk                                        # EA: 0x10fc
 
             test EAX,EAX                                       # EA: 0x1101
             jns .L_111b                                        # EA: 0x1103

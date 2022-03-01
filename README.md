@@ -49,12 +49,11 @@ The extension adds two configuration settings to configure the connection betwee
 - **Host**: (IP address of server): Set this to "localhost" (default) for an LSP server running on the same host as the client, or host IP address if remote. To configure the extension to create a dedicated LSP server running as a subprocess to the GTIRB extension (client), use "stdio" for host. The subprocess will exit when the client disconnects.
 - **Port** (Port to connect to): This defaults to 3036, but can be changed to any convenient port number. If you are using something other than the default, be sure to use the same port when starting the LSP server. When the LSP server is a dedicated subprocess (host = "stdio") the port number is ignored.
 
-## Building and installing the LSP server as a separate python package
+## Installing the LSP server as a separate python package
 
-The file setup.py provides build information to build the LSP server with. To build a wheel that can be installed with pip:
+To install with pip:
 ```
-% python3 setup.py build
-% python3 -m build --wheel
+% python3 -m pip install .
 ```
 
 The LSP server optionally supports some limited binary rewriting capability. Some additional python packages are needed, to install these with pip go to the gtirb_lsp_server directory and run:
@@ -75,7 +74,7 @@ Server start-up and connection may be automatic or manual depending on the way y
 
 To start the LSP server:
 ```
-% python3 -m gtirb_lsp_server --tcp [ --host HOST ] [ --port PORT ] [ --verbose | --very-verbose ]
+% gtirb_lsp_server --tcp [ --host HOST ] [ --port PORT ] [ --verbose | --very-verbose ]
 ```
 Where:
 - HOST is the server IP address, the default is 127.0.0.1
