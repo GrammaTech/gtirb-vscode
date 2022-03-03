@@ -4,32 +4,40 @@ This tool provides an API and a command line utility for creating a GTIRB file f
 
 ## Installation
 
-To install this module on your system, first clone this repository. Then, build a wheel and install it, for example:
+To install this module on your system, first clone this repository. Then install using pip:
+```shell
+ % pip3 install .
 ```
+
+To support GTIRB rewriting in the server, install the extra rewriting packages:
+```shell
+ % pip3 install .[rewriting]
+```
+
+To build a wheel for installing elsewhere:
+```shell
  % python3 setup.py build
  % python3 setup.py bdist_wheel --dist-dir=$PWD
- % pip3 install $PWD/cwgtirb_lsp_server-VERSION-py2.py3-none-any.whl
 ```
 
 ## As a command line tool
 
 Starting STDIO server
 
-```
+```shell
 % gtirb_lsp_server
 ```
 
 Starting a TCP based server
 
 ```
-% gtirb_lsp_server --tcp [ --host HOST ] [ --port PORT ]
+% gtirb_lsp_server --tcp [ --host HOST ] [ --port PORT ] [-v [v]]
 ```
 
-Testing
+To run unit tests, install the server requirements (including dev requirements) and run pytest:
 
 ```shell
-from gtirb_lsp_server.test.test_gtirb_lsp_server import *
-test = InitialIndexTestDriver()
-test.setUp()
-(offset_by_line, line_by_offset) = test.get_current_indexes()
+% pip3 install -r requirements.txt
+% pip3 install -r requirements-dev.txt
+% pytest
 ```

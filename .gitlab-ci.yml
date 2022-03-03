@@ -82,9 +82,9 @@ export_lsp:
     - pushd gtirb_lsp_server
     - pip install -r requirements-dev.txt
     - python3 setup.py bdist_wheel --dist-dir=$CI_PROJECT_DIR/dist
-    - popd
     - VERSION=$(python3 -c "from imp import load_source; pkginfo = load_source('pkginfo.version', 'gtirb_lsp_server/version.py'); print(pkginfo.__version__)")
     - PKGNAME=$(python3 -c "from imp import load_source; pkginfo = load_source('pkginfo.version', 'gtirb_lsp_server/version.py'); print(pkginfo.__packagename__)")
+    - popd
     - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ && "$CI_COMMIT_REF_NAME" =~ ^release-.* ]]; then exit 1; fi
     # this job is not using $CI_JOB_TOKEN because it only has read access
     # https://gitlab.com/gitlab-org/gitlab/-/issues/35067
