@@ -25,7 +25,9 @@ import os
 
 THISDIR = os.path.dirname(os.path.realpath(__file__))
 
-version = imp.load_source("pkginfo.version", os.path.join(THISDIR, "version.py")).__version__
+version = imp.load_source(
+    "pkginfo.version", os.path.join(THISDIR, "gtirb_lsp_server", "version.py")
+).__version__
 
 setuptools.setup(
     name="gtirb-lsp-server",
