@@ -79,8 +79,10 @@ test-unstable-20:
 export_lsp:
   stage: export
   script:
-    - pip install -r gtirb_lsp_server/requirements-dev.txt
-    - python3 gtirb_lsp_server/setup.py bdist_wheel --dist-dir=$CI_PROJECT_DIR/dist
+    - pushd gtirb_lsp_server
+    - pip install -r requirements-dev.txt
+    - python3 setup.py bdist_wheel --dist-dir=$CI_PROJECT_DIR/dist
+    - popd
     - VERSION=$(python3 -c "from imp import load_source; pkginfo = load_source('pkginfo.version', 'gtirb_lsp_server/version.py'); print(pkginfo.__version__)")
     - PKGNAME=$(python3 -c "from imp import load_source; pkginfo = load_source('pkginfo.version', 'gtirb_lsp_server/version.py'); print(pkginfo.__packagename__)")
     - if [[ "$VERSION" =~ \.dev[[:digit:]]*.*$ && "$CI_COMMIT_REF_NAME" =~ ^release-.* ]]; then exit 1; fi
