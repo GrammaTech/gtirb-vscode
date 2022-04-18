@@ -1,6 +1,8 @@
 # GTIRB GUI
 
-A VSCode extension for viewing and navigating GTIRB, Grammatech's IR for Binaries. This extension is currently for internal use only and not licensed for distribution outside of GrammaTech.
+A VSCode extension for viewing, navigating, and rewriting [GTIRB][], Grammatech's IR for Binaries.
+
+[GTIRB]: https://github.com/GrammaTech/gtirb
 
 ## Prerequisites
 
@@ -84,3 +86,11 @@ Where:
 *NOTE* VSCode records user configuration settings in a file that persists, even when extensions are uninstalled. You may need to edit this file to reset the GTIRB Server host configuration. The path to this file depends on your host OS and version, some possibilities are:
 - Linux: $HOME/.config/Code/User/settings/json
 - Windows: C:\Users\%USERNAME%\AppData\Roaming\Code\User\Settings.json
+
+## Copyright and Acknowledgments
+
+Copyright (C) 2022 GrammaTech, Inc.
+
+This code is licensed under the GPLv3 license. See the LICENSE file in the project root for license terms.
+
+This project is sponsored by the Office of Naval Research, One Liberty Center, 875 N. Randolph Street, Arlington, VA 22203 under contract #N68335-17-C-0700. The content of the information does not necessarily reflect the position or policy of the Government and no official endorsement should be inferred.
