@@ -45,7 +45,10 @@ server = FakeServer()
 fake_document = FakeDocument()
 server.workspace.get_document = Mock(return_value=fake_document.document)
 text_document_item = TextDocumentItem(
-    uri=fake_document.document_uri, language_id="gtgas", version=1, text=str(fake_document.asmtext),
+    uri=fake_document.document_uri,
+    language_id="gtgas",
+    version=1,
+    text=str(fake_document.asmtext),
 )
 
 
@@ -70,7 +73,8 @@ async def test_get_definition_success():
 
     # Call server.get_definition()
     defParams = DefinitionParams(
-        text_document=text_document_item, position=Position(line=cursor[0], character=cursor[1]),
+        text_document=text_document_item,
+        position=Position(line=cursor[0], character=cursor[1]),
     )
     response = get_definition(server, defParams)
 
@@ -99,7 +103,8 @@ async def test_get_definition_fail_no_document():
 
     # Call server.get_definition()
     defParams = DefinitionParams(
-        text_document=text_document_item, position=Position(line=cursor[0], character=cursor[1]),
+        text_document=text_document_item,
+        position=Position(line=cursor[0], character=cursor[1]),
     )
     response = get_definition(server, defParams)
     assert response is None
@@ -123,7 +128,8 @@ async def test_get_definition_fail_no_token():
 
     # Call server.get_definition()
     defParams = DefinitionParams(
-        text_document=text_document_item, position=Position(line=cursor[0], character=cursor[1]),
+        text_document=text_document_item,
+        position=Position(line=cursor[0], character=cursor[1]),
     )
     response = get_definition(server, defParams)
     assert response is None
@@ -151,7 +157,8 @@ async def test_get_definition_fail_no_symbol():
 
     # Call server.get_definition()
     defParams = DefinitionParams(
-        text_document=text_document_item, position=Position(line=cursor[0], character=cursor[1]),
+        text_document=text_document_item,
+        position=Position(line=cursor[0], character=cursor[1]),
     )
     response = get_definition(server, defParams)
     assert response is None
@@ -181,7 +188,8 @@ async def test_get_definition_fail_no_definition():
 
     # Call server.get_definition()
     defParams = DefinitionParams(
-        text_document=text_document_item, position=Position(line=cursor[0], character=cursor[1]),
+        text_document=text_document_item,
+        position=Position(line=cursor[0], character=cursor[1]),
     )
     response = get_definition(server, defParams)
     assert response is None

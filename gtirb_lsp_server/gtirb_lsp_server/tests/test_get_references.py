@@ -46,7 +46,10 @@ server = FakeServer()
 fake_document = FakeDocument()
 server.workspace.get_document = Mock(return_value=fake_document.document)
 text_document_item = TextDocumentItem(
-    uri=fake_document.document_uri, language_id="gtgas", version=1, text=str(fake_document.asmtext),
+    uri=fake_document.document_uri,
+    language_id="gtgas",
+    version=1,
+    text=str(fake_document.asmtext),
 )
 
 

@@ -373,7 +373,10 @@ def block_text(
     """Return the text of all the listing lines associated with the given block"""
     return "\n".join(
         list(
-            map(lambda l: asm_lines[l].split("#")[0].rstrip(), block_lines(line_by_offset, block),)
+            map(
+                lambda l: asm_lines[l].split("#")[0].rstrip(),
+                block_lines(line_by_offset, block),
+            )
         )
     )
 
@@ -572,7 +575,10 @@ async def get_line_from_address(ls: GtirbLanguageServer, *args) -> Optional[Rang
     line = address_to_line(ir, current_indexes[document_uri][1], address)
     if line:
         # only the line number is really used, set character to 0
-        range = Range(start=Position(line=line, character=0), end=Position(line=line, character=0),)
+        range = Range(
+            start=Position(line=line, character=0),
+            end=Position(line=line, character=0),
+        )
         return range
     # no line found, send message to UI
     ls.show_message(f" No line for {address_str}")
@@ -661,7 +667,9 @@ def did_change(ls: GtirbLanguageServer, params: DidChangeTextDocumentParams) -> 
             if offset:
                 if offset.element_id not in modified_blocks[uri]:
                     asm = block_text(
-                        line_by_offset, offset.element_id, ls.workspace.get_document(uri).lines,
+                        line_by_offset,
+                        offset.element_id,
+                        ls.workspace.get_document(uri).lines,
                     )
                     logger.debug(f" modified block {offset.element_id} with:\n{asm}")
                 modified_blocks[uri].add(offset.element_id)
@@ -997,7 +1005,10 @@ def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional
         filter(
             lambda it: isinstance(it[0], int),
             map(
-                lambda off_and_se: (offset_to_line(line_by_offset, off_and_se[0]), off_and_se[1],),
+                lambda off_and_se: (
+                    offset_to_line(line_by_offset, off_and_se[0]),
+                    off_and_se[1],
+                ),
                 offsets_and_referenced_symbols,
             ),
         )

@@ -35,13 +35,22 @@ def main():
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--tcp", action="store_true", default=DEFAULT_TCP_FLAG, help="Run server in TCP mode.",
+        "--tcp",
+        action="store_true",
+        default=DEFAULT_TCP_FLAG,
+        help="Run server in TCP mode.",
     )
     parser.add_argument(
-        "--host", type=str, default=DEFAULT_HOST, help="Server IP addr",
+        "--host",
+        type=str,
+        default=DEFAULT_HOST,
+        help="Server IP addr",
     )
     parser.add_argument(
-        "--port", type=int, default=DEFAULT_PORT, help="Port to listen for requests on.",
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help="Port to listen for requests on.",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose log output.")
     parser.add_argument(

@@ -185,7 +185,10 @@ class InitialIndexTestDriver(unittest.TestCase):
                 lambda it: isinstance(it, int),
                 map(
                     lambda off: line_by_offset.get(off),
-                    map(lambda off_and_se: off_and_se[0], offsets_and_referenced_symbols,),
+                    map(
+                        lambda off_and_se: off_and_se[0],
+                        offsets_and_referenced_symbols,
+                    ),
                 ),
             )
         )

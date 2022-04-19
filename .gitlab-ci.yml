@@ -14,7 +14,8 @@ check-format:
   stage: check-format
   script:
     - apt update -y && apt install -y git
-    - pip3 install pre-commit
+    - pip install pre-commit
+    - pre-commit install
     - pre-commit run --all-files --show-diff-on-failure
 
 #
