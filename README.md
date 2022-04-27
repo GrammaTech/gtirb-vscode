@@ -13,7 +13,7 @@ This extension uses an LSP (language server protocol) server to add features to 
 - LSP Server (python) dependencies:
     - python 3.6+.
     - The [gtirb][] python package.
-    - Also the [pygls[[] python package is required (can be installed with pip).
+    - Also the [pygls][] python package is required (can be installed with pip).
  - To support rewriting of GTIRB files (optional) the LSP server requires the following additional python packages
     - [gtirb-rewriting][]
     - [gtirb-functions][]
