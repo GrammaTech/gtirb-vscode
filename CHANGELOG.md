@@ -1,8 +1,12 @@
+# 0.0.4
+
+- First public release
+
 # 0.0.3
 
 - Cleanup of output logging to GTIRB server channel on client
 - Additional testing, including adding a mock server
-- Move to more standard layour for lsp server and add console script
+- Move to more standard layout for lsp server and add console script
 
 # 0.0.2
 
