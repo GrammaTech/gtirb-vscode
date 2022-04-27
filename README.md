@@ -49,7 +49,7 @@ To install the extension as prebuilt VSIX file, go to the package registry and c
 ```
 And start or restart vscode. The extension will start up automatically whenever you open a file with the ".gtirb" extension. You can uninstall the extension from within the GUI, or with the following command:
 ```
-% code --uninstall-extension gtirb-vsix-VERSION.0.1.vsix
+% code --uninstall-extension gtirb-vsix-VERSION.vsix
 ```
 
 ## Configuration options
