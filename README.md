@@ -9,15 +9,22 @@ A VSCode extension for viewing, navigating, and rewriting [GTIRB][], Grammatech'
 This extension uses an LSP (language server protocol) server to add features to the VSCode UI. The LSP server is included with the extension.
 - GTIRB UI (client) dependencies:
     - vscode (https://code.visualstudio.com/download).
-    - gtirb-pprinter version 1.8.2 or higher, which supports UI listing mode.
+    - [gtirb-pprinter][] version 1.8.2 or higher, which supports UI listing mode.
 - LSP Server (python) dependencies:
     - python 3.6+.
-    - The gtirb python package.
-    - Also the pygls python packages is required (can be installed with pip).
+    - The [gtirb][] python package.
+    - Also the [pygls[[] python package is required (can be installed with pip).
  - To support rewriting of GTIRB files (optional) the LSP server requires the following additional python packages
-    - gtirb-rewriting
-    - gtirb-functions
-    - mcasm
+    - [gtirb-rewriting][]
+    - [gtirb-functions][]
+    - [mcasm][]
+
+[gtirb]: https://github.com/GrammaTech/gtirb
+[mcasm]: https://github.com/GrammaTech/mc-asm
+[pygls]: https://github.com/openlawlibrary/pygls
+[gtirb-pprinter]: https://github.com/GrammaTech/gtirb-pprinter
+[gtirb-rewriting]: https://github.com/GrammaTech/gtirb-rewriting
+[gtirb-functions]: https://github.com/GrammaTech/gtirb-functions
 
 ## Functionality
 
@@ -37,12 +44,12 @@ Some examples of what you can do with this extension: Load a GTIRB file and disp
 ## Installing the pre-built extension
 
 To install the extension as prebuilt VSIX file, go to the package registry and click on the latest version of gtirb-vscode. You will see a list of builds for this version, click on the most recent build to download it. To install into VSCode, run the following command in the folder you downloaded to:
-```shell
-% code --install-extension gtirb-vsix-0.0.1.vsix
+```
+% code --install-extension gtirb-vsix-VERSION.vsix
 ```
 And start or restart vscode. The extension will start up automatically whenever you open a file with the ".gtirb" extension. You can uninstall the extension from within the GUI, or with the following command:
-```shell
-% code --uninstall-extension gtirb-vsix-0.0.1.vsix
+```
+% code --uninstall-extension gtirb-vsix-VERSION.0.1.vsix
 ```
 
 ## Configuration options
@@ -54,16 +61,16 @@ The extension adds two configuration settings to configure the connection betwee
 ## Installing the LSP server as a separate python package
 
 To install with pip, got to the gtirb_lsp_server directory and run:
-```shell
+```
 % pip3 install .
 ```
 
 The LSP server optionally supports some limited binary rewriting capability. Some additional python packages are needed, to install these with pip go to the gtirb_lsp_server directory and run:
-```shell
+```
 % pip3 install -r requirements-rewriting.txt
 ```
 Or, to install the GTIRB LSP server and dependencies, including packages needed for rewriting capability:
-```shell
+```
 % pip3 install .[rewriting]
 ```
 
@@ -75,7 +82,7 @@ Server start-up and connection may be automatic or manual depending on the way y
 - You can also start the LSP Server manually using the command line below.
 
 To start the LSP server:
-```shell
+```
 % gtirb_lsp_server --tcp [ --host HOST ] [ --port PORT ] [ --verbose | --very-verbose ]
 ```
 Where:
