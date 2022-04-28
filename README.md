@@ -4,27 +4,13 @@ A VSCode extension for viewing, navigating, and rewriting [GTIRB][], Grammatech'
 
 [GTIRB]: https://github.com/GrammaTech/gtirb
 
-## Prerequisites
+## Quickstart
+- Install gtirb-pprinter using instructions [here][https://github.com/GrammaTech/gtirb/#installing]
+- Install pygls with pip, for example "pip install pygls".
+- Download the latest pre-built extension from the package registry and install it in VSCode (see "Installing the pre-built extension" below).
+- Restart VSCode.
+- Opening a GTIRB file in VSCode will now activate the extension.
 
-This extension uses an LSP (language server protocol) server to add features to the VSCode UI. The LSP server is included with the extension.
-- GTIRB UI (client) dependencies:
-    - vscode (https://code.visualstudio.com/download).
-    - [gtirb-pprinter][] version 1.8.2 or higher, which supports UI listing mode.
-- LSP Server (python) dependencies:
-    - python 3.6+.
-    - The [gtirb][] python package.
-    - Also the [pygls][] python package is required (can be installed with pip).
- - To support rewriting of GTIRB files (optional) the LSP server requires the following additional python packages
-    - [gtirb-rewriting][]
-    - [gtirb-functions][]
-    - [mcasm][]
-
-[gtirb]: https://github.com/GrammaTech/gtirb
-[mcasm]: https://github.com/GrammaTech/mc-asm
-[pygls]: https://github.com/openlawlibrary/pygls
-[gtirb-pprinter]: https://github.com/GrammaTech/gtirb-pprinter
-[gtirb-rewriting]: https://github.com/GrammaTech/gtirb-rewriting
-[gtirb-functions]: https://github.com/GrammaTech/gtirb-functions
 
 ## Functionality
 
@@ -93,6 +79,28 @@ Where:
 *NOTE* VSCode records user configuration settings in a file that persists, even when extensions are uninstalled. You may need to edit this file to reset the GTIRB Server host configuration. The path to this file depends on your host OS and version, some possibilities are:
 - Linux: $HOME/.config/Code/User/settings/json
 - Windows: C:\Users\%USERNAME%\AppData\Roaming\Code\User\Settings.json
+
+## Prerequisites
+
+This extension uses an LSP (language server protocol) server to add features to the VSCode UI. The LSP server is included with the extension.
+- GTIRB UI (client) dependencies:
+    - vscode (https://code.visualstudio.com/download).
+    - [gtirb-pprinter][] version 1.8.2 or higher, which supports UI listing mode.
+- LSP Server (python) dependencies:
+    - python 3.6+.
+    - The [gtirb][] python package.
+    - Also the [pygls][] python package is required (can be installed with pip).
+ - To support rewriting of GTIRB files (optional) the LSP server requires the following additional python packages
+    - [gtirb-rewriting][]
+    - [gtirb-functions][]
+    - [mcasm][]
+
+[gtirb]: https://github.com/GrammaTech/gtirb
+[mcasm]: https://github.com/GrammaTech/mc-asm
+[pygls]: https://github.com/openlawlibrary/pygls
+[gtirb-pprinter]: https://github.com/GrammaTech/gtirb-pprinter
+[gtirb-rewriting]: https://github.com/GrammaTech/gtirb-rewriting
+[gtirb-functions]: https://github.com/GrammaTech/gtirb-functions
 
 ## Copyright and Acknowledgments
 
