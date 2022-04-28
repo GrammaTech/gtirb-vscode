@@ -89,13 +89,13 @@ export_lsp:
     # this job is not using $CI_JOB_TOKEN because it only has read access
     # https://gitlab.com/gitlab-org/gitlab/-/issues/35067
     # this job is also not using $CI_DEPLOY_USER and $CI_DEPLOY_PASSWORD because it only has write access
-    - if [[ "$CI_COMMIT_BRANCH" == "master" ]]; then
+    - if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
         ls $CI_PROJECT_DIR/dist/*.whl | xargs $CI_PROJECT_DIR/delete_remote_packages.py $GL_PKG_API_TOKEN;
       fi
     - sed "s/password = <access token>/password = $GL_PKG_API_TOKEN/" $CI_PROJECT_DIR/.pypirc > ~/.pypirc
     - python3 -m twine upload --verbose --repository repypi $CI_PROJECT_DIR/dist/*.whl
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_COMMIT_REF_NAME =~ /^release-.*/'
 
 build_vsix:
@@ -122,4 +122,4 @@ export_vsix:
   dependencies:
     - build_vsix
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
