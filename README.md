@@ -5,12 +5,13 @@ A VSCode extension for viewing, navigating, and rewriting [GTIRB][], Grammatech'
 [GTIRB]: https://github.com/GrammaTech/gtirb
 
 ## Quickstart
-- Install gtirb-pprinter using instructions [here][https://github.com/GrammaTech/gtirb/#installing]
-- Install pygls with pip, for example "pip install pygls".
+- Install gtirb-pprinter using instructions [installing][].
+- Install pygls with pip, for example `pip install pygls`.
 - Download the latest pre-built extension from the package registry and install it in VSCode (see "Installing the pre-built extension" below).
 - Restart VSCode.
-- Opening a GTIRB file in VSCode will now activate the extension.
+- Open a GTIRB file in VSCode which will now activate the extension.
 
+[installing]: https://github.com/GrammaTech/gtirb/#installing
 
 ## Functionality
 
@@ -84,7 +85,7 @@ Where:
 
 This extension uses an LSP (language server protocol) server to add features to the VSCode UI. The LSP server is included with the extension.
 - GTIRB UI (client) dependencies:
-    - vscode (https://code.visualstudio.com/download).
+    - [vscode][].
     - [gtirb-pprinter][] version 1.8.2 or higher, which supports UI listing mode.
 - LSP Server (python) dependencies:
     - python 3.6+.
@@ -95,6 +96,7 @@ This extension uses an LSP (language server protocol) server to add features to 
     - [gtirb-functions][]
     - [mcasm][]
 
+[vscode]: https://code.visualstudio.com/download
 [gtirb]: https://github.com/GrammaTech/gtirb
 [mcasm]: https://github.com/GrammaTech/mc-asm
 [pygls]: https://github.com/openlawlibrary/pygls
