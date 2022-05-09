@@ -30,14 +30,17 @@ Some examples of what you can do with this extension: Load a GTIRB file and disp
 
 ## Installing the pre-built extension
 
-To install the extension as prebuilt VSIX file, go to the package registry and click on the latest version of gtirb-vscode. You will see a list of builds for this version, click on the most recent build to download it. To install into VSCode, run the following command in the folder you downloaded to:
+
+To install the extension as prebuilt VSIX file, go to [releases][] and click on the latest version of gtirb-vscode. Find the vsix file in the list of release assets and download it, then run the following command in the folder you downloaded to:
 ```
 % code --install-extension gtirb-vsix-VERSION.vsix
 ```
-And start or restart vscode. The extension will start up automatically whenever you open a file with the ".gtirb" extension. You can uninstall the extension from within the GUI, or with the following command:
+Where *VERSION* refers to the version that you downloaded. Then start or restart vscode. The extension will start up automatically whenever you open a file with the ".gtirb" extension. You can uninstall the extension from within the GUI, or with the following command:
 ```
 % code --uninstall-extension gtirb-vsix-VERSION.vsix
 ```
+
+[releases]: https://github.com/GrammaTech/gtirb-vscode/releases/
 
 ## Configuration options
 
