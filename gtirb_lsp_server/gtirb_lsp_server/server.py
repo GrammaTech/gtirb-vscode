@@ -146,6 +146,7 @@ class GtirbLanguageServer(LanguageServer):
     # To be available to the client they must be listed in the manifest.
     CMD_GET_LINE_FROM_ADDRESS = "gtirbGetLineFromAddress"
     CMD_GET_ADDRESS_OF_SYMBOL = "gtirbGetAddressOfSymbol"
+    CMD_GET_LINE_ADDRESS_LIST = "gtirbGetLineAddressList"
     # Custom requests
     # Must match a registered handler in the client
     REQ_GET_GTIRB_FILE = "gtirbGetGtirbFile"
@@ -589,6 +590,22 @@ async def get_line_from_address(ls: GtirbLanguageServer, *args) -> Optional[Rang
     # no line found, send message to UI
     ls.show_message(f" No line for {address_str}")
     return None
+
+
+@server.command(GtirbLanguageServer.CMD_GET_LINE_ADDRESS_LIST)
+async def get_line_address_list(ls: GtirbLanguageServer, *args) -> List[List[int]]:
+    """Get a list of (line, address) pairs for every line with an instruction"""
+    document_uri = args[0][0]
+    if document_uri not in ls.workspace.documents:
+        ls.show_message(f" No address mapping for {document_uri}")
+        return None
+    offset_by_line = current_indexes[document_uri][0]
+    result_list = []
+    for line, offset in offset_by_line.items():
+        block_addr = offset.element_id.address
+        if block_addr is not None:
+            result_list.append([line, block_addr + offset.displacement])
+    return result_list
 
 
 @server.command(GtirbLanguageServer.CMD_GET_ADDRESS_OF_SYMBOL)
