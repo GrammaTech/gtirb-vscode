@@ -458,8 +458,11 @@ def get_line_offset(ir: gtirb, current_lines: StringList) -> List[Tuple[int, Tup
     # Process the gtirb file to create a list of (address, UUID).
     address_to_uuid_displacement = {}
     for block in ir.byte_blocks:
-        for i in range(block.size):
-            address_to_uuid_displacement[block.address + i] = (block.uuid, i)
+        if block.address:
+            for i in range(block.size):
+                address_to_uuid_displacement[block.address + i] = (block.uuid, i)
+        else:
+            logger.warning("Block has no address, gtirb file may be defective.")
 
     # Walk the lists building up a map of line_number <-> (uuid, offset).
     # Lowest address in file should be in a block.
