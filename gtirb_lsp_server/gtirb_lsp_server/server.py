@@ -271,7 +271,6 @@ if functions_spec and rewriting_spec and mcasm_spec:
 else:
     logger.info("Disabling rewriting.")
     server.disable_rewrite()
-    server.show_message_log("Server does not support GTIRB rewriting")
 
 
 # Symbolic references may appear at addresses not represented by offsets in the
