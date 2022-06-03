@@ -71,6 +71,7 @@ from pygls.lsp.types import TextDocumentItem
 
 from pydantic import BaseModel
 from concurrent.futures import Future
+import importlib
 
 # # Might be useful at some point but keeping commented now to avoid hurting our test coverage.
 # #
@@ -257,14 +258,17 @@ class NonTerminatingLanguageServerProtocol(LanguageServerProtocol):
 
 server = GtirbLanguageServer(protocol_cls=NonTerminatingLanguageServerProtocol)
 
-try:
+functions_spec = importlib.util.find_spec("gtirb_functions")
+rewriting_spec = importlib.util.find_spec("gtirb_rewriting")
+mcasm_spec = importlib.util.find_spec("mcasm")
+
+if functions_spec and rewriting_spec and mcasm_spec:
     import gtirb_functions
     import gtirb_rewriting
     import mcasm
 
     X86Syntax = mcasm.X86Syntax
-except Exception as inst:
-    logger.info(inst)
+else:
     logger.info("Disabling rewriting.")
     server.disable_rewrite()
     server.show_message_log("Server does not support GTIRB rewriting")
