@@ -535,22 +535,6 @@ def address_to_line(ir: gtirb, line_by_offset: Dict[int, gtirb.Offset], address:
             return line
 
 
-@server.command(GtirbLanguageServer.CMD_GET_LINE_ADDRESS_LIST)
-async def get_line_address_list(ls: GtirbLanguageServer, *args) -> List[List[int]]:
-    """Get a list of (line, address) pairs for every line with an instruction"""
-    document_uri = args[0][0]
-    if document_uri not in ls.workspace.documents:
-        ls.show_message(f" No address mapping for {document_uri}")
-        return None
-    offset_by_line = current_indexes[document_uri][0]
-    result_list = []
-    for line, offset in offset_by_line.items():
-        block_addr = offset.element_id.address
-        if block_addr is not None:
-            result_list.append([line, block_addr + offset.displacement])
-    return result_list
-
-
 def apply_changes_to_indexes(
     offset_by_line: Dict[int, gtirb.Offset],
     line_by_offset: Dict[gtirb.Offset, int],
@@ -776,6 +760,21 @@ def create_gtirb_server_instance():
 
         block = symbol.referent
         return hex(block.address)
+
+    @server.command(GtirbLanguageServer.CMD_GET_LINE_ADDRESS_LIST)
+    async def get_line_address_list(ls: GtirbLanguageServer, *args) -> List[List[int]]:
+        """Get a list of (line, address) pairs for every line with an instruction"""
+        document_uri = args[0][0]
+        if document_uri not in ls.workspace.documents:
+            ls.show_message(f" No address mapping for {document_uri}")
+            return None
+        offset_by_line = current_indexes[document_uri][0]
+        result_list = []
+        for line, offset in offset_by_line.items():
+            block_addr = offset.element_id.address
+            if block_addr is not None:
+                result_list.append([line, block_addr + offset.displacement])
+        return result_list
 
     @server.feature(TEXT_DOCUMENT_DID_CHANGE)
     def did_change(ls: GtirbLanguageServer, params: DidChangeTextDocumentParams) -> None:
