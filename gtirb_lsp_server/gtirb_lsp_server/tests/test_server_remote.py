@@ -37,7 +37,6 @@ from pygls.lsp.types import (
     TextDocumentItem,
 )
 
-from gtirb_lsp_server.server import did_open, did_close
 from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
 
 # Create a fake server
@@ -52,7 +51,7 @@ text_document_item = TextDocumentItem(
 )
 
 # Make this one remote
-server.is_remote = Mock(return_value=True)
+server.gtirb_server.is_remote = Mock(return_value=True)
 
 # Additional setup and configuration for remote mode
 #
@@ -72,7 +71,7 @@ hashname = hashlib.md5(client_path.encode("utf-8")).hexdigest() + ".gtirb"
 remote_gtirbfile = os.path.join(tempfile.gettempdir(), hashname)
 index_path = Path(remote_gtirbfile + ".json")
 shutil.copyfile(fake_document.gtirb_path, remote_gtirbfile)
-server.lsp.transport.get_extra_info = Mock(return_value=[peername])
+server.gtirb_server.lsp.transport.get_extra_info = Mock(return_value=[peername])
 
 
 @pytest.mark.asyncio
@@ -89,25 +88,25 @@ async def test_open_close_remote():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Verify open:
     # - Always sends message when indexing is complete
     # - Check that thre file was created
-    server.show_message.assert_called_once()
+    server.gtirb_server.show_message.assert_called_once()
     assert index_path.exists()
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
     # If everything went right, show_message_log should
     # have been called exactly 3 times
-    assert server.show_message_log.call_count == 3
+    assert server.gtirb_server.show_message_log.call_count == 3
 
     # Opening the same document again should resuse the index
     server.reset_mocks()
     filename = os.path.split(fake_document.document.uri)[1]
-    await did_open(server, openParams)
-    server.show_message_log.assert_called_with(f"re-using indexes for {filename}")
-    did_close(server, closeParams)
+    await server.did_open(openParams)
+    server.gtirb_server.show_message_log.assert_called_with(f"re-using indexes for {filename}")
+    server.did_close(closeParams)

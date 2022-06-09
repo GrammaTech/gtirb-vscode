@@ -38,7 +38,7 @@ from pygls.lsp.types import (
     TextDocumentItem,
     Position,
 )
-from gtirb_lsp_server.server import did_open, did_close, get_references
+
 from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
 
 # Create a fake server
@@ -72,7 +72,7 @@ async def test_get_references_success():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_references()
     refParams = ReferenceParams(
@@ -81,7 +81,7 @@ async def test_get_references_success():
         context=ReferenceContext(include_declaration=False),
     )
 
-    references = get_references(server, refParams)
+    references = server.get_references(refParams)
 
     # Verify the result
     # - Have to iterate through returned references, because they do not have deterministic ordering
@@ -102,7 +102,7 @@ async def test_get_references_success():
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -120,7 +120,7 @@ async def test_get_references_fail_no_document():
         context=ReferenceContext(include_declaration=False),
     )
 
-    response = get_references(server, refParams)
+    response = server.get_references(refParams)
     assert response is None
 
 
@@ -138,7 +138,7 @@ async def test_get_references_fail_no_token():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_references()
     refParams = ReferenceParams(
@@ -147,12 +147,12 @@ async def test_get_references_fail_no_token():
         context=ReferenceContext(include_declaration=False),
     )
 
-    response = get_references(server, refParams)
+    response = server.get_references(refParams)
     assert response is None
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -171,7 +171,7 @@ async def test_get_references_fail_no_symbol():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_references()
     refParams = ReferenceParams(
@@ -179,7 +179,7 @@ async def test_get_references_fail_no_symbol():
         position=Position(line=cursor[0], character=cursor[1]),
         context=ReferenceContext(include_declaration=False),
     )
-    references = get_references(server, refParams)
+    references = server.get_references(refParams)
 
     # Verify the result
     assert len(references) == 1
@@ -188,7 +188,7 @@ async def test_get_references_fail_no_symbol():
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -205,7 +205,7 @@ async def test_get_references_fail_no_definition():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_references()
     refParams = ReferenceParams(
@@ -214,9 +214,9 @@ async def test_get_references_fail_no_definition():
         context=ReferenceContext(include_declaration=False),
     )
 
-    response = get_references(server, refParams)
+    response = server.get_references(refParams)
     assert response is None
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)

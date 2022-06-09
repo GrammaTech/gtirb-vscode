@@ -6,6 +6,7 @@ from typing import Text
 from pathlib import Path
 from unittest.mock import Mock
 from pygls.workspace import Document, Workspace
+from gtirb_lsp_server.server import GtirbLanguageServer, create_gtirb_server_instance
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -18,6 +19,9 @@ def read_text_file(path: Path) -> Text:
 
 class FakeTransport:
     get_extra_info = None
+
+    def __init__(self):
+        self.write = Mock()
 
 
 class FakeProtocol:
@@ -40,21 +44,32 @@ class FakeDocument:
         self.document = Document(self.document_uri, self.document_content)
 
 
-class FakeServer:
+class FakeServer(GtirbLanguageServer):
     """Use mocks for the methods provided by pygls."""
 
     show_message = None
     show_message_log = None
     is_remote = None
     can_rewrite = None
+    workspace = Workspace("", None)
 
     def __init__(self):
-        self.workspace = Workspace("", None)
-        self.show_message = Mock()
-        self.show_message_log = Mock()
-        self.is_remote = Mock(return_value=False)
+        GtirbLanguageServer.__init__(self)
+        self.gtirb_server = create_gtirb_server_instance()
+        self.did_open = self.gtirb_server.lsp.fm.features["textDocument/didOpen"]
+        self.did_save = self.gtirb_server.lsp.fm.features["textDocument/didSave"]
+        self.did_close = self.gtirb_server.lsp.fm.features["textDocument/didClose"]
+        self.did_change = self.gtirb_server.lsp.fm.features["textDocument/didChange"]
+        self.get_hover = self.gtirb_server.lsp.fm.features["textDocument/hover"]
+        self.get_definition = self.gtirb_server.lsp.fm.features["textDocument/definition"]
+        self.get_references = self.gtirb_server.lsp.fm.features["textDocument/references"]
+        self.get_symbol_address = self.gtirb_server.lsp.fm.commands["gtirbGetAddressOfSymbol"]
+        self.gtirb_server.lsp.workspace = Workspace("", None)
+        self.gtirb_server.lsp.transport = FakeTransport()
+        self.gtirb_server.show_message = Mock()
+        self.gtirb_server.show_message_log = Mock()
         self.lsp = FakeProtocol()
 
     def reset_mocks(self):
-        self.show_message.reset_mock()
-        self.show_message_log.reset_mock()
+        self.gtirb_server.show_message.reset_mock()
+        self.gtirb_server.show_message_log.reset_mock()

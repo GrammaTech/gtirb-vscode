@@ -35,13 +35,9 @@ from pygls.lsp.types import (
     TextDocumentIdentifier,
     TextDocumentItem,
 )
-from gtirb_lsp_server.server import (
-    did_open,
-    did_close,
-    get_line_from_address,
-    get_address_of_symbol,
-)
+from gtirb_lsp_server.server import get_line_from_address
 from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
+
 
 # Create a fake server
 server = FakeServer()
@@ -56,7 +52,7 @@ text_document_item = TextDocumentItem(
 
 # Unlike other features, the custom commands
 # check the list of documents in the workspace
-server.workspace.put_document(text_document_item)
+server.gtirb_server.lsp.workspace.put_document(text_document_item)
 
 
 @pytest.mark.asyncio
@@ -76,18 +72,18 @@ async def test_line_from_address_success():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server command handler
     args = [fake_document.document_uri, input_address]
-    response = await get_line_from_address(server, args)
+    response = await get_line_from_address(server.gtirb_server, args)
     assert response.start.line == output_line
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(
         text_document=TextDocumentIdentifier(uri=fake_document.document_uri)
     )
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -101,9 +97,9 @@ async def test_line_from_address_fail_no_document():
 
     # Call server command handler
     args = [bad_uri, input_address]
-    response = await get_line_from_address(server, args)
+    response = await get_line_from_address(server.gtirb_server, args)
     assert response is None
-    server.show_message.assert_called_once_with(f" No address mapping for {bad_uri}")
+    server.gtirb_server.show_message.assert_called_once_with(f" No address mapping for {bad_uri}")
 
 
 @pytest.mark.asyncio
@@ -116,20 +112,20 @@ async def test_line_from_address_fail_invalid_addr():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server command handler
     server.reset_mocks()
     args = [fake_document.document_uri, input_address]
-    response = await get_line_from_address(server, args)
+    response = await get_line_from_address(server.gtirb_server, args)
     assert response is None
-    server.show_message.assert_called_once_with(f" Invalid address {input_address}")
+    server.gtirb_server.show_message.assert_called_once_with(f" Invalid address {input_address}")
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(
         text_document=TextDocumentIdentifier(uri=fake_document.document_uri)
     )
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -142,20 +138,20 @@ async def test_line_from_address_fail_no_line():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server command handler
     server.reset_mocks()
     args = [fake_document.document_uri, input_address]
-    response = await get_line_from_address(server, args)
+    response = await get_line_from_address(server.gtirb_server, args)
     assert response is None
-    server.show_message.assert_called_once_with(f" No line for {input_address}")
+    server.gtirb_server.show_message.assert_called_once_with(f" No line for {input_address}")
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(
         text_document=TextDocumentIdentifier(uri=fake_document.document_uri)
     )
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 #
@@ -184,18 +180,18 @@ async def test_address_of_symbol_success():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server command handler
     args = [fake_document.document_uri, input_symbol]
-    response = await get_address_of_symbol(server, args)
+    response = await server.get_symbol_address(args)
     assert response == output_address
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(
         text_document=TextDocumentIdentifier(uri=fake_document.document_uri)
     )
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -209,9 +205,9 @@ async def test_address_of_symbol_fail_no_document():
 
     # Call server command handler
     args = [bad_uri, input_symbol]
-    response = await get_address_of_symbol(server, args)
+    response = await server.get_symbol_address(args)
     assert response is None
-    server.show_message.assert_called_once_with(f" No address mapping for {bad_uri}")
+    server.gtirb_server.show_message.assert_called_once_with(f" No address mapping for {bad_uri}")
 
 
 @pytest.mark.asyncio
@@ -224,16 +220,16 @@ async def test_address_of_symbol_fail_no_definition():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server command handler
     args = [fake_document.document_uri, input_symbol]
-    response = await get_address_of_symbol(server, args)
+    response = await server.get_symbol_address(args)
     assert response is None
-    server.show_message(f" {input_symbol} does not have an address")
+    server.gtirb_server.show_message(f" {input_symbol} does not have an address")
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(
         text_document=TextDocumentIdentifier(uri=fake_document.document_uri)
     )
-    did_close(server, closeParams)
+    server.did_close(closeParams)

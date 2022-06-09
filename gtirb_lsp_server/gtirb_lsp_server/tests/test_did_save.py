@@ -40,7 +40,7 @@ from pygls.lsp.types import (
     Range,
     Position,
 )
-from gtirb_lsp_server.server import did_open, did_close, did_change, did_save
+
 from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
 
 # Create a fake server
@@ -90,7 +90,7 @@ async def test_did_save_success():
             text=str(fake_document.asmtext),
         )
     )
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.did_change()
     change = TextDocumentContentChangeEvent(
@@ -112,23 +112,23 @@ async def test_did_save_success():
     )
 
     server.reset_mocks()
-    did_change(server, changeParams)
+    server.did_change(changeParams)
     # If success there should be 2 log messages and no user messages
-    assert server.show_message_log.call_count == 2
-    assert server.show_message.call_count == 0
+    assert server.gtirb_server.show_message_log.call_count == 2
+    assert server.gtirb_server.show_message.call_count == 0
 
     # Call server.did_save() to process edit and rewrite file
     saveParams = DidSaveTextDocumentParams(
         text_document=TextDocumentIdentifier(uri=fake_document.document_uri)
     )
-    await did_save(server, saveParams)
+    await server.did_save(saveParams)
     if server.can_rewrite():
-        server.show_message.assert_called_once_with("GTIRB rewritten successfully")
+        server.gtirb_server.show_message.assert_called_once_with("GTIRB rewritten successfully")
     else:
-        server.show_message.assert_called_once_with("GTIRB rewriting is disabled")
+        server.gtirb_server.show_message.assert_called_once_with("GTIRB rewriting is disabled")
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(
         text_document=TextDocumentIdentifier(uri=fake_document.document_uri)
     )
-    did_close(server, closeParams)
+    server.did_close(closeParams)

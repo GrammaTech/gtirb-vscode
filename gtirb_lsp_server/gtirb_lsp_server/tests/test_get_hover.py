@@ -37,7 +37,7 @@ from pygls.lsp.types import (
     TextDocumentItem,
     Position,
 )
-from gtirb_lsp_server.server import did_open, did_close, get_hover
+
 from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
 
 # Create a fake server
@@ -69,7 +69,7 @@ async def test_get_hover_success():
             text=str(fake_document.asmtext),
         )
     )
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_hover()
     hoverParams = HoverParams(
@@ -82,11 +82,11 @@ async def test_get_hover_success():
         position=Position(line=cursor[0], character=cursor[1]),
     )
 
-    response = get_hover(server, hoverParams)
+    response = server.get_hover(hoverParams)
     assert response.contents.value == expected_hover
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(
         text_document=TextDocumentIdentifier(uri=fake_document.document_uri)
     )
-    did_close(server, closeParams)
+    server.did_close(closeParams)

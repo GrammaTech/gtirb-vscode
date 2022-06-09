@@ -23,7 +23,7 @@
 import argparse
 import logging
 
-from .server import gtirb_stdio_server, gtirb_tcp_server
+from .server import run_gtirb_server
 
 DEFAULT_PORT = 3036
 DEFAULT_HOST = "127.0.0.1"
@@ -78,9 +78,9 @@ def main():
         logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.WARN)
 
     if args.tcp:
-        gtirb_tcp_server(host=args.host, port=args.port)
+        run_gtirb_server("tcp", host=args.host, port=args.port)
     else:
-        gtirb_stdio_server()
+        run_gtirb_server("stdio")
 
 
 if __name__ == "__main__":

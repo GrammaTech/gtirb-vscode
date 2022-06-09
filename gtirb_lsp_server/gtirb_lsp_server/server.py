@@ -72,6 +72,7 @@ from pygls.lsp.types import TextDocumentItem
 from pydantic import BaseModel
 from concurrent.futures import Future
 import importlib
+import sys
 
 # # Might be useful at some point but keeping commented now to avoid hurting our test coverage.
 # #
@@ -155,6 +156,8 @@ class GtirbLanguageServer(LanguageServer):
         super().__init__(loop, protocol_cls, max_workers)
         self.rewrite_enabled = True
         self.server_remote = False
+        self.host = None
+        self.port = None
 
     def can_rewrite(self) -> bool:
         """Returns whether server has ability to rewrite GTIRB files"""
@@ -164,8 +167,10 @@ class GtirbLanguageServer(LanguageServer):
         """Disables server GTIRB rewriting"""
         self.rewrite_enabled = False
 
-    def set_remote(self) -> None:
+    def set_remote(self, host, port) -> None:
         """Sets server to remote mode"""
+        self.host = host
+        self.port = port
         self.server_remote = True
 
     def is_remote(self) -> bool:
@@ -228,49 +233,15 @@ class NonTerminatingLanguageServerProtocol(LanguageServerProtocol):
     unless the server is running as a subprocess.
     """
 
-    def using_stdio(self) -> bool:
-        """Returns True IFF this server instance is running as a subprocess"""
-        transport = self.transport
-        if transport is None:
-            return False
-        subprocess = transport.get_extra_info("subprocess", None)
-        if subprocess is None:
-            return False
-        return True
-
     def bf_exit(self, *args) -> None:
         """Stops the server process."""
-        if self.using_stdio():
-            super().bf_exit(self, *args)
+        logger.info("Got bf_exit request, should really do something.")
+        pass
 
     def bf_shutdown(self, *args) -> None:
         """Request from client which asks server to shutdown."""
-        if self.using_stdio():
-            return super().bf_shutdown(self, *args)
-
-    def connection_lost(self, *args) -> None:
-        """Method from base class, called when connection is lost, in which case we
-        want to shutdown the server's process as well.
-        """
-        if self.using_stdio():
-            super().connection_lost(self, *args)
-
-
-server = GtirbLanguageServer(protocol_cls=NonTerminatingLanguageServerProtocol)
-
-functions_spec = importlib.util.find_spec("gtirb_functions")
-rewriting_spec = importlib.util.find_spec("gtirb_rewriting")
-mcasm_spec = importlib.util.find_spec("mcasm")
-
-if functions_spec and rewriting_spec and mcasm_spec:
-    import gtirb_functions
-    import gtirb_rewriting
-    import mcasm
-
-    X86Syntax = mcasm.X86Syntax
-else:
-    logger.info("Disabling rewriting.")
-    server.disable_rewrite()
+        logger.info("Got bf_shutdown request, should really do something.")
+        pass
 
 
 # Symbolic references may appear at addresses not represented by offsets in the
@@ -563,58 +534,6 @@ def address_to_line(ir: gtirb, line_by_offset: Dict[int, gtirb.Offset], address:
             return line
 
 
-@server.command(GtirbLanguageServer.CMD_GET_LINE_FROM_ADDRESS)
-async def get_line_from_address(ls: GtirbLanguageServer, *args) -> Optional[Range]:
-    """Get the line number for an address for a document"""
-    document_uri = args[0][0]
-    address_str = args[0][1]
-    logger.debug(f"Command: get_line_from_address, uri: {document_uri}")
-    if document_uri not in ls.workspace.documents:
-        ls.show_message(f" No address mapping for {document_uri}")
-        return None
-    try:
-        address = int(address_str, 16)
-    except Exception:
-        ls.show_message(f" Invalid address {address_str}")
-        return None
-    ir = current_gtirbs[document_uri]
-    line = address_to_line(ir, current_indexes[document_uri][1], address)
-    if line:
-        # only the line number is really used, set character to 0
-        range = Range(
-            start=Position(line=line, character=0),
-            end=Position(line=line, character=0),
-        )
-        return range
-    # no line found, send message to UI
-    ls.show_message(f" No line for {address_str}")
-    return None
-
-
-@server.command(GtirbLanguageServer.CMD_GET_ADDRESS_OF_SYMBOL)
-async def get_address_of_symbol(ls: GtirbLanguageServer, *args) -> Optional[int]:
-    """Get the address of a symbol"""
-    document_uri = args[0][0]
-    symbol_name = args[0][1]
-    logger.debug(f"Command: get_address_of_symbol, uri: {document_uri}")
-    if document_uri not in ls.workspace.documents:
-        ls.show_message(f" No address mapping for {document_uri}")
-        return None
-    ir = current_gtirbs[document_uri]
-    symbol = symbol_for_name(ir, symbol_name)
-    if (
-        symbol is None
-        or symbol.referent is None
-        or isinstance(symbol.referent, gtirb.block.ProxyBlock)
-    ):
-        # no address available, log message to UI
-        ls.show_message(f" {symbol_name} does not have an address")
-        return None
-
-    block = symbol.referent
-    return hex(block.address)
-
-
 def apply_changes_to_indexes(
     offset_by_line: Dict[int, gtirb.Offset],
     line_by_offset: Dict[gtirb.Offset, int],
@@ -649,58 +568,6 @@ def apply_changes_to_indexes(
         line_by_offset = new_line_by_offset
 
     return (new_offset_by_line, line_by_offset)
-
-
-@server.feature(TEXT_DOCUMENT_DID_CHANGE)
-def did_change(ls: GtirbLanguageServer, params: DidChangeTextDocumentParams) -> None:
-    """GTIRB listing did change notification."""
-    uri = params.text_document.uri
-    logger.debug(f"Document Did Change notification, {params.text_document.uri}")
-    ls.show_message_log(f"Document Did Change notification, {params.text_document.uri}")
-    if uri not in modified_blocks:
-        modified_blocks[uri] = set()
-
-    if uri not in current_indexes:
-        ls.show_message(f"document {uri} not in indexes")
-        return None
-    (offset_by_line, line_by_offset) = current_indexes[uri]
-
-    # Track the blocks modified by the edit.
-    for change in params.content_changes:
-        for line in range(change.range.start.line, change.range.end.line + 1):
-            offset = offset_by_line.get(line)
-            logger.debug(f"offset {offset} for edit line {line}")
-            if offset:
-                if offset.element_id not in modified_blocks[uri]:
-                    asm = block_text(
-                        line_by_offset,
-                        offset.element_id,
-                        ls.workspace.get_document(uri).lines,
-                    )
-                    logger.debug(f" modified block {offset.element_id} with:\n{asm}")
-                modified_blocks[uri].add(offset.element_id)
-
-    # Update the indices to reflect the edit.
-    (offset_by_line, line_by_offset) = apply_changes_to_indexes(
-        offset_by_line,
-        line_by_offset,
-        map(
-            lambda change: (change.range.start.line, change.range.end.line + 1, change.text),
-            params.content_changes,
-        ),
-    )
-
-    current_indexes[uri] = (offset_by_line, line_by_offset)
-
-    logger.debug(f"{len(modified_blocks[uri])} blocks for {len(params.content_changes)} edits")
-    ls.show_message_log(f"Storing edit for {params.text_document.uri}")
-
-    # TODO: Update the lines<->offset map as the lines change.
-    # - get the affected lines from the range
-    # - update all lines in the line<->offset map appropriately
-
-    # Could consider updating the spaces in time to ensure the column
-    # offset of the address stays consistent.
 
 
 def parse_listing_uri(listing_uri: str) -> Tuple[str, str]:
@@ -762,299 +629,6 @@ async def configure_path_mapping(ls: GtirbLanguageServer, text_document: TextDoc
     return
 
 
-@server.feature(TEXT_DOCUMENT_DID_SAVE)
-async def did_save(ls: GtirbLanguageServer, params: DidSaveTextDocumentParams) -> None:
-    """
-    Text document did save notification.
-
-    If there are pending edits, and rewriting is enabled,
-    process the edits and save the modified GTIRB file.
-    """
-    uri = params.text_document.uri
-    logger.debug(f"Text Document Did Save notification, uri: {uri}")
-    ls.show_message_log(f"Text Document Did Save notification, uri: {uri}")
-
-    #
-    # Go ahead with rewriting procedure only if server has enabled rewriting
-    #
-    if ls.can_rewrite():
-
-        workspace = ls.workspace
-        document = workspace.get_document(uri)
-        logger.debug(f"document {document} with {len(document.lines)} lines")
-
-        if (uri not in modified_blocks) or len(modified_blocks[uri]) == 0:
-            ls.show_message(f"no pending modifications to {uri}")
-            return None
-
-        if uri not in current_gtirbs:
-            ls.show_message(f"no GTIRB found for {uri}")
-            return None
-        ir = current_gtirbs[uri]
-
-        logger.debug(f"applying {len(modified_blocks[uri])} modifications to {uri}")
-
-        functions = gtirb_functions.Function.build_functions(ir.modules[0])
-        blocks_to_functions = {block: func for func in functions for block in func.get_all_blocks()}
-        ctx = gtirb_rewriting.RewritingContext(ir.modules[0], functions)
-
-        def literal_patch(asm: str) -> gtirb_rewriting.Patch:
-            """
-            Creates a patch from a literal string. The patch will have an empty
-            constraints object.
-            """
-
-            @gtirb_rewriting.patch_constraints(x86_syntax=X86Syntax.INTEL)
-            def patch(ctx):
-                return asm
-
-            return gtirb_rewriting.Patch.from_function(patch)
-
-        blocks: List[gtirb.ByteBlock] = []
-        for block in modified_blocks[uri]:
-            asm = block_text(current_indexes[uri][1], block, document.lines)
-
-            if asm == "":
-                logger.debug("TODO: implement block deletion in gtirb-rewriting")
-                ls.show_message(f"skipping {block} with empty assembly")
-            else:
-                logger.debug(f"rewriting {block} to asm:\n{asm}")
-                blocks += [block]
-                ctx.replace_at(blocks_to_functions[block], block, 0, block.size, literal_patch(asm))
-
-        try:
-            if len(blocks) > 0:
-                ctx.apply()
-                # Save gtirb, overwriting the original file
-                gtirbfile = gtirbfile_path_map[uri]
-                ir.save_protobuf(gtirbfile)
-                # If server is running in remote mode,
-                # push modified file back to client:
-                if ls.is_remote():
-                    with open(gtirbfile, "rb") as file_to_send:
-                        gtirb_data = file_to_send.read()
-                        gtirb_bytes = base64.encodebytes(gtirb_data)
-                        asmfile, client_gtirb_path = parse_listing_uri(uri)
-                        await ls.push_gtirb_content_async(
-                            "file://" + client_gtirb_path, gtirb_bytes
-                        )
-                ls.show_message("GTIRB rewritten successfully")
-
-            else:
-                ls.show_message("No blocks to rewrite")
-            # Clear modified blocks on a SUCCESSFUL rewrite.  Otherwise retain for another try.
-            del modified_blocks[uri]
-        except Exception as e:
-            ls.show_message(f"assembly error: {e}")
-    else:
-        ls.show_message("GTIRB rewriting is disabled")
-
-        # TODO:
-        # - Update the text with gtirb-pprinter
-        #   - Return updated text
-        #   - Distinguish between modified comments and modified assembly
-        #   - Improved warnings when trying to delete blocks
-        #   - Retain comments (in a new AuxData in the GTIRB)
-
-
-@server.feature(TEXT_DOCUMENT_DID_OPEN)
-async def did_open(ls: GtirbLanguageServer, params: DidOpenTextDocumentParams) -> None:
-    """GTIRB listing did open notification."""
-    logger.debug(f"Document Did Open notification, uri: {params.text_document.uri}")
-    ls.show_message_log(f"Document Did Open notification, uri: {params.text_document.uri}")
-    ext = os.path.splitext(params.text_document.uri)[1]
-
-    # This is where to check the extension
-    if ext == ".view":
-        await configure_path_mapping(ls, params.text_document)
-        index_ok, reused_index = ensure_index(params.text_document)
-        if index_ok:
-            filename = os.path.split(params.text_document.uri)[1]
-            ls.show_message(f"{filename} indexing completed.")
-            if reused_index:
-                ls.show_message_log(f"re-using indexes for {filename}")
-
-
-@server.feature(TEXT_DOCUMENT_DID_CLOSE)
-def did_close(ls: GtirbLanguageServer, params: DidCloseTextDocumentParams) -> None:
-    """GTIRB listing did close notification."""
-    logger.debug(f"Document Did Close notification, uri: {params.text_document.uri}")
-    ls.show_message_log(f"Document Did Close notification, uri: {params.text_document.uri}")
-    if params.text_document.uri in modified_blocks:
-        del modified_blocks[params.text_document.uri]
-    if params.text_document.uri in current_indexes:
-        del current_indexes[params.text_document.uri]
-        del current_gtirbs[params.text_document.uri]
-        ls.show_message_log(
-            f"Removed document from index of open documents: {params.text_document.uri}"
-        )
-
-
-@server.feature(DEFINITION, DefinitionOptions())
-def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optional[Location]:
-    """GTIRB listing definition request."""
-    logger.debug(f"Definition request received uri: {params.text_document.uri}")
-    ls.show_message_log(f"Definition request received uri: {params.text_document.uri}")
-    current_document: Document = ls.workspace.get_document(params.text_document.uri)
-
-    # Make sure the document indexes and gtirb representation are cached
-    if current_document.uri not in current_indexes or current_document.uri not in current_gtirbs:
-        ls.show_message(f"{current_document.uri} is not currently cached.")
-        return None
-
-    current_lines: StringList = current_document.source.splitlines()
-    current_token: str = isolate_token(
-        current_lines[params.position.line], params.position.character
-    )
-
-    # Ensure token was found at the given position.
-    if current_token is None or len(current_token) == 0:
-        ls.show_message(f" no token found for {params.position.line}:{params.position.character}")
-        return None
-
-    # Retrieve the gtirb for the URI
-    ir = current_gtirbs[current_document.uri]
-
-    symbol = symbol_for_name(ir, current_token)
-    if (
-        symbol is None
-        or symbol.referent is None
-        or isinstance(symbol.referent, gtirb.block.ProxyBlock)
-    ):
-        ls.show_message(f" {current_token} is not defined.")
-        return None
-    logger.debug(f"symbol found: {symbol}")
-
-    line = first_line_for_uuid(current_indexes[current_document.uri][0], symbol.referent.uuid)
-    if line is None:
-        ls.show_message(f" no definition found for {symbol.name}.")
-        return None
-    logger.debug(f"line found: {line}")
-
-    line = preceding_function_line(current_lines, current_token, line)
-    definition_line: str = current_lines[line]
-
-    return Location(
-        uri=current_document.uri,
-        range=Range(
-            start=Position(line=line, character=definition_line.find(current_token)),
-            end=Position(
-                line=line, character=(definition_line.find(current_token) + len(current_token))
-            ),
-        ),
-    )
-
-
-@server.feature(REFERENCES, ReferenceOptions())
-def get_references(ls: GtirbLanguageServer, params: ReferenceParams) -> Optional[List[Location]]:
-    """GTIRB listing references request."""
-    logger.debug(f"References request received uri: {params.text_document.uri}")
-    ls.show_message_log(f"References request received uri: {params.text_document.uri}")
-    current_document: Document = ls.workspace.get_document(params.text_document.uri)
-
-    # Make sure the document indexes and gtirb representation are cached
-    if current_document.uri not in current_indexes or current_document.uri not in current_gtirbs:
-        ls.show_message(f"{current_document.uri} is not currently cached.")
-        return None
-
-    current_lines: StringList = current_document.source.splitlines()
-    current_token: str = isolate_token(
-        current_lines[params.position.line], params.position.character
-    )
-    locations: LocationList = []
-
-    # Ensure token was found at the given position.
-    if current_token is None or len(current_token) == 0:
-        ls.show_message(f" no token found for {params.position.line}:{params.position.character}")
-        return None
-
-    # Retrieve the gtirb for the URI
-    ir = current_gtirbs[current_document.uri]
-
-    # Retrieve the offsets for the URI
-    (offset_by_line, line_by_offset) = current_indexes[current_document.uri]
-
-    # If token is a GTIRB symbol, find references to it,
-    # otherwise find references to whatever block the cusor is in
-    symbol = symbol_for_name(ir, current_token)
-    if symbol is None or (
-        symbol.referent is not None and isinstance(symbol.referent, gtirb.block.ProxyBlock)
-    ):
-        reference_line = params.position.line
-    else:
-        # Cover the case of a symbol that has no referent
-        if symbol.referent is None:
-            ls.show_message(f" symbol for {current_token} not found.")
-            return None
-        reference_line = first_line_for_uuid(offset_by_line, symbol.referent.uuid)
-
-    offset = offset_by_line.get(reference_line)
-    if offset is None:
-        ls.show_message(f" no offset found for line {reference_line}.")
-        return None
-    logger.debug(f"offset found: {offset}")
-
-    references = list(symbolic_references(ir, offset.element_id.references))
-    if len(references) == 0:
-        ls.show_message(f" no references found for line {reference_line}.")
-        return None
-    logger.debug(f"references found: {references}")
-
-    offsets_and_referenced_symbols = offsets_at_references(ir, references)
-    if len(offsets_and_referenced_symbols) == 0:
-        ls.show_message(f" no offsets found for {references}.")
-        return None
-    logger.debug(f"offsets found: {offsets_and_referenced_symbols}")
-
-    # This is now lines and symbols
-    lines_and_referenced_symbols = list(
-        filter(
-            lambda it: isinstance(it[0], int),
-            map(
-                lambda off_and_se: (
-                    offset_to_line(line_by_offset, off_and_se[0]),
-                    off_and_se[1],
-                ),
-                offsets_and_referenced_symbols,
-            ),
-        )
-    )
-    if len(lines_and_referenced_symbols) == 0:
-        ls.show_message(f" no lines for offsets {offsets_and_referenced_symbols}.")
-        return None
-    logger.debug(f"lines found: {lines_and_referenced_symbols}")
-
-    for (line, symbol) in lines_and_referenced_symbols:
-        reference_line: str = current_lines[line]
-        token = None
-        if reference_line.find(symbol.name) > 0:
-            token = symbol.name
-        if token:
-            locations.append(
-                Location(
-                    uri=current_document.uri,
-                    range=Range(
-                        start=Position(line=line, character=reference_line.find(token)),
-                        end=Position(
-                            line=line, character=(reference_line.find(token) + len(token))
-                        ),
-                    ),
-                )
-            )
-        else:
-            locations.append(
-                Location(
-                    uri=current_document.uri,
-                    range=Range(
-                        start=Position(line=line, character=0),
-                        end=Position(line=line, character=len(reference_line)),
-                    ),
-                )
-            )
-
-    return locations
-
-
 def offset_indexed_aux_data(ir: gtirb) -> List[str]:
     """Return a list of the auxdata types in the current GTIRB that are indexed by Offset"""
     results = []
@@ -1081,30 +655,34 @@ def offset_to_auxdata(ir: gtirb, offset: gtirb.Offset) -> Optional[str]:
         return result
 
 
-@server.feature(HOVER, HoverOptions())
-def get_hover(ls: GtirbLanguageServer, params: HoverParams) -> Optional[Hover]:
-    """GTIRB listing hover request."""
-    logger.debug(f"Hover request received uri: {params.text_document.uri}")
-    ls.show_message_log(f"Hover request received uri: {params.text_document.uri}")
-    ir = current_gtirbs[params.text_document.uri]
-    (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
-    offset = offset_by_line.get(params.position.line)
-
-    if offset:  # Get auxdata associated with current offset
-        auxdata = offset_to_auxdata(ir, offset)
-        markup_kind = MarkupKind.PlainText
-    else:  # Get function decompilation if possible
-        text = ls.workspace.get_document(params.text_document.uri).source
-        function_name = parse_function_name(text.splitlines()[params.position.line])
-        auxdata = function_decompilations(ir, function_name) if function_name else None
-        markup_kind = MarkupKind.Markdown
-
-    if auxdata:
-        logger.debug(f"Returning auxdata: {auxdata}")
-        return Hover(contents=MarkupContent(kind=markup_kind, value=auxdata))
-    else:
-        logger.debug("No auxdata found")
-        return Hover(contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found"))
+#
+# Used in test module
+#
+async def get_line_from_address(ls: GtirbLanguageServer, *args) -> Optional[Range]:
+    """Get the line number for an address for a document"""
+    document_uri = args[0][0]
+    address_str = args[0][1]
+    logger.debug(f"Command: get_line_from_address, uri: {document_uri}")
+    if document_uri not in ls.workspace.documents:
+        ls.show_message(f" No address mapping for {document_uri}")
+        return None
+    try:
+        address = int(address_str, 16)
+    except Exception:
+        ls.show_message(f" Invalid address {address_str}")
+        return None
+    ir = current_gtirbs[document_uri]
+    line = address_to_line(ir, current_indexes[document_uri][1], address)
+    if line:
+        # only the line number is really used, set character to 0
+        range = Range(
+            start=Position(line=line, character=0),
+            end=Position(line=line, character=0),
+        )
+        return range
+    # no line found, send message to UI
+    ls.show_message(f" No line for {address_str}")
+    return None
 
 
 def parse_function_name(text: str) -> Optional[str]:
@@ -1141,12 +719,449 @@ def function_decompilations(ir: gtirb, name: str) -> Optional[str]:
     return result.strip() if result else None
 
 
-def gtirb_tcp_server(host: str, port: int) -> None:
-    """Start the language server as TCP server"""
-    server.set_remote()
-    server.start_tcp(host, port)
+def create_gtirb_server_instance():
+
+    server = GtirbLanguageServer(protocol_cls=NonTerminatingLanguageServerProtocol)
+
+    functions_spec = importlib.util.find_spec("gtirb_functions")
+    rewriting_spec = importlib.util.find_spec("gtirb_rewriting")
+    mcasm_spec = importlib.util.find_spec("mcasm")
+
+    if functions_spec and rewriting_spec and mcasm_spec:
+        import gtirb_functions
+        import gtirb_rewriting
+        import mcasm
+
+        X86Syntax = mcasm.X86Syntax
+    else:
+        logger.info("Disabling rewriting.")
+        server.disable_rewrite()
+
+    @server.command(GtirbLanguageServer.CMD_GET_ADDRESS_OF_SYMBOL)
+    async def get_address_of_symbol(ls: GtirbLanguageServer, *args) -> Optional[int]:
+        """Get the address of a symbol"""
+        document_uri = args[0][0]
+        symbol_name = args[0][1]
+        logger.debug(f"Command: get_address_of_symbol, uri: {document_uri}")
+        if document_uri not in ls.workspace.documents:
+            ls.show_message(f" No address mapping for {document_uri}")
+            return None
+        ir = current_gtirbs[document_uri]
+        symbol = symbol_for_name(ir, symbol_name)
+        if (
+            symbol is None
+            or symbol.referent is None
+            or isinstance(symbol.referent, gtirb.block.ProxyBlock)
+        ):
+            # no address available, log message to UI
+            ls.show_message(f" {symbol_name} does not have an address")
+            return None
+
+        block = symbol.referent
+        return hex(block.address)
+
+    @server.feature(TEXT_DOCUMENT_DID_CHANGE)
+    def did_change(ls: GtirbLanguageServer, params: DidChangeTextDocumentParams) -> None:
+        """GTIRB listing did change notification."""
+        uri = params.text_document.uri
+        logger.debug(f"Document Did Change notification, {params.text_document.uri}")
+        ls.show_message_log(f"Document Did Change notification, {params.text_document.uri}")
+        if uri not in modified_blocks:
+            modified_blocks[uri] = set()
+
+        if uri not in current_indexes:
+            ls.show_message(f"document {uri} not in indexes")
+            return None
+        (offset_by_line, line_by_offset) = current_indexes[uri]
+
+        # Track the blocks modified by the edit.
+        for change in params.content_changes:
+            for line in range(change.range.start.line, change.range.end.line + 1):
+                offset = offset_by_line.get(line)
+                logger.debug(f"offset {offset} for edit line {line}")
+                if offset:
+                    if offset.element_id not in modified_blocks[uri]:
+                        asm = block_text(
+                            line_by_offset,
+                            offset.element_id,
+                            ls.workspace.get_document(uri).lines,
+                        )
+                        logger.debug(f" modified block {offset.element_id} with:\n{asm}")
+                    modified_blocks[uri].add(offset.element_id)
+
+        # Update the indices to reflect the edit.
+        (offset_by_line, line_by_offset) = apply_changes_to_indexes(
+            offset_by_line,
+            line_by_offset,
+            map(
+                lambda change: (change.range.start.line, change.range.end.line + 1, change.text),
+                params.content_changes,
+            ),
+        )
+
+        current_indexes[uri] = (offset_by_line, line_by_offset)
+
+        logger.debug(f"{len(modified_blocks[uri])} blocks for {len(params.content_changes)} edits")
+        ls.show_message_log(f"Storing edit for {params.text_document.uri}")
+
+        # TODO: Update the lines<->offset map as the lines change.
+        # - get the affected lines from the range
+        # - update all lines in the line<->offset map appropriately
+
+        # Could consider updating the spaces in time to ensure the column
+        # offset of the address stays consistent.
+
+    @server.feature(TEXT_DOCUMENT_DID_SAVE)
+    async def did_save(ls: GtirbLanguageServer, params: DidSaveTextDocumentParams) -> None:
+        """
+        Text document did save notification.
+
+        If there are pending edits, and rewriting is enabled,
+        process the edits and save the modified GTIRB file.
+        """
+        uri = params.text_document.uri
+        logger.debug(f"Text Document Did Save notification, uri: {uri}")
+        ls.show_message_log(f"Text Document Did Save notification, uri: {uri}")
+
+        #
+        # Go ahead with rewriting procedure only if server has enabled rewriting
+        #
+        if ls.can_rewrite():
+
+            workspace = ls.workspace
+            document = workspace.get_document(uri)
+            logger.debug(f"document {document} with {len(document.lines)} lines")
+
+            if (uri not in modified_blocks) or len(modified_blocks[uri]) == 0:
+                ls.show_message(f"no pending modifications to {uri}")
+                return None
+
+            if uri not in current_gtirbs:
+                ls.show_message(f"no GTIRB found for {uri}")
+                return None
+            ir = current_gtirbs[uri]
+
+            logger.debug(f"applying {len(modified_blocks[uri])} modifications to {uri}")
+
+            functions = gtirb_functions.Function.build_functions(ir.modules[0])
+            blocks_to_functions = {
+                block: func for func in functions for block in func.get_all_blocks()
+            }
+            ctx = gtirb_rewriting.RewritingContext(ir.modules[0], functions)
+
+            def literal_patch(asm: str) -> gtirb_rewriting.Patch:
+                """
+                Creates a patch from a literal string. The patch will have an empty
+                constraints object.
+                """
+
+                @gtirb_rewriting.patch_constraints(x86_syntax=X86Syntax.INTEL)
+                def patch(ctx):
+                    return asm
+
+                return gtirb_rewriting.Patch.from_function(patch)
+
+            blocks: List[gtirb.ByteBlock] = []
+            for block in modified_blocks[uri]:
+                asm = block_text(current_indexes[uri][1], block, document.lines)
+
+                if asm == "":
+                    logger.debug("TODO: implement block deletion in gtirb-rewriting")
+                    ls.show_message(f"skipping {block} with empty assembly")
+                else:
+                    logger.debug(f"rewriting {block} to asm:\n{asm}")
+                    blocks += [block]
+                    ctx.replace_at(
+                        blocks_to_functions[block], block, 0, block.size, literal_patch(asm)
+                    )
+
+            try:
+                if len(blocks) > 0:
+                    ctx.apply()
+                    # Save gtirb, overwriting the original file
+                    gtirbfile = gtirbfile_path_map[uri]
+                    ir.save_protobuf(gtirbfile)
+                    # If server is running in remote mode,
+                    # push modified file back to client:
+                    if ls.is_remote():
+                        with open(gtirbfile, "rb") as file_to_send:
+                            gtirb_data = file_to_send.read()
+                            gtirb_bytes = base64.encodebytes(gtirb_data)
+                            asmfile, client_gtirb_path = parse_listing_uri(uri)
+                            await ls.push_gtirb_content_async(
+                                "file://" + client_gtirb_path, gtirb_bytes
+                            )
+                    ls.show_message("GTIRB rewritten successfully")
+
+                else:
+                    ls.show_message("No blocks to rewrite")
+                # Clear modified blocks on a SUCCESSFUL rewrite.  Otherwise retain for another try.
+                del modified_blocks[uri]
+            except Exception as e:
+                ls.show_message(f"assembly error: {e}")
+        else:
+            ls.show_message("GTIRB rewriting is disabled")
+
+            # TODO:
+            # - Update the text with gtirb-pprinter
+            #   - Return updated text
+            #   - Distinguish between modified comments and modified assembly
+            #   - Improved warnings when trying to delete blocks
+            #   - Retain comments (in a new AuxData in the GTIRB)
+
+    @server.feature(TEXT_DOCUMENT_DID_OPEN)
+    async def did_open(ls: GtirbLanguageServer, params: DidOpenTextDocumentParams) -> None:
+        """GTIRB listing did open notification."""
+        logger.debug(f"Document Did Open notification, uri: {params.text_document.uri}")
+        ls.show_message_log(f"Document Did Open notification, uri: {params.text_document.uri}")
+        ext = os.path.splitext(params.text_document.uri)[1]
+
+        # This is where to check the extension
+        if ext == ".view":
+            await configure_path_mapping(ls, params.text_document)
+            index_ok, reused_index = ensure_index(params.text_document)
+            if index_ok:
+                filename = os.path.split(params.text_document.uri)[1]
+                ls.show_message(f"{filename} indexing completed.")
+                if reused_index:
+                    ls.show_message_log(f"re-using indexes for {filename}")
+
+    @server.feature(TEXT_DOCUMENT_DID_CLOSE)
+    def did_close(ls: GtirbLanguageServer, params: DidCloseTextDocumentParams) -> None:
+        """GTIRB listing did close notification."""
+        logger.debug(f"Document Did Close notification, uri: {params.text_document.uri}")
+        ls.show_message_log(f"Document Did Close notification, uri: {params.text_document.uri}")
+        if params.text_document.uri in modified_blocks:
+            del modified_blocks[params.text_document.uri]
+        if params.text_document.uri in current_indexes:
+            del current_indexes[params.text_document.uri]
+            del current_gtirbs[params.text_document.uri]
+            ls.show_message_log(
+                f"Removed document from index of open documents: {params.text_document.uri}"
+            )
+
+    @server.feature(DEFINITION, DefinitionOptions())
+    def get_definition(ls: GtirbLanguageServer, params: DefinitionParams) -> Optional[Location]:
+        """GTIRB listing definition request."""
+        logger.debug(f"Definition request received uri: {params.text_document.uri}")
+        ls.show_message_log(f"Definition request received uri: {params.text_document.uri}")
+        current_document: Document = ls.workspace.get_document(params.text_document.uri)
+
+        # Make sure the document indexes and gtirb representation are cached
+        if (
+            current_document.uri not in current_indexes
+            or current_document.uri not in current_gtirbs
+        ):
+            ls.show_message(f"{current_document.uri} is not currently cached.")
+            return None
+
+        current_lines: StringList = current_document.source.splitlines()
+        current_token: str = isolate_token(
+            current_lines[params.position.line], params.position.character
+        )
+
+        # Ensure token was found at the given position.
+        if current_token is None or len(current_token) == 0:
+            ls.show_message(
+                f" no token found for {params.position.line}:{params.position.character}"
+            )
+            return None
+
+        # Retrieve the gtirb for the URI
+        ir = current_gtirbs[current_document.uri]
+
+        symbol = symbol_for_name(ir, current_token)
+        if (
+            symbol is None
+            or symbol.referent is None
+            or isinstance(symbol.referent, gtirb.block.ProxyBlock)
+        ):
+            ls.show_message(f" {current_token} is not defined.")
+            return None
+        logger.debug(f"symbol found: {symbol}")
+
+        line = first_line_for_uuid(current_indexes[current_document.uri][0], symbol.referent.uuid)
+        if line is None:
+            ls.show_message(f" no definition found for {symbol.name}.")
+            return None
+        logger.debug(f"line found: {line}")
+
+        line = preceding_function_line(current_lines, current_token, line)
+        definition_line: str = current_lines[line]
+
+        return Location(
+            uri=current_document.uri,
+            range=Range(
+                start=Position(line=line, character=definition_line.find(current_token)),
+                end=Position(
+                    line=line, character=(definition_line.find(current_token) + len(current_token))
+                ),
+            ),
+        )
+
+    @server.feature(REFERENCES, ReferenceOptions())
+    def get_references(
+        ls: GtirbLanguageServer, params: ReferenceParams
+    ) -> Optional[List[Location]]:
+        """GTIRB listing references request."""
+        logger.debug(f"References request received uri: {params.text_document.uri}")
+        ls.show_message_log(f"References request received uri: {params.text_document.uri}")
+        current_document: Document = ls.workspace.get_document(params.text_document.uri)
+
+        # Make sure the document indexes and gtirb representation are cached
+        if (
+            current_document.uri not in current_indexes
+            or current_document.uri not in current_gtirbs
+        ):
+            ls.show_message(f"{current_document.uri} is not currently cached.")
+            return None
+
+        current_lines: StringList = current_document.source.splitlines()
+        current_token: str = isolate_token(
+            current_lines[params.position.line], params.position.character
+        )
+        locations: LocationList = []
+
+        # Ensure token was found at the given position.
+        if current_token is None or len(current_token) == 0:
+            ls.show_message(
+                f" no token found for {params.position.line}:{params.position.character}"
+            )
+            return None
+
+        # Retrieve the gtirb for the URI
+        ir = current_gtirbs[current_document.uri]
+
+        # Retrieve the offsets for the URI
+        (offset_by_line, line_by_offset) = current_indexes[current_document.uri]
+
+        # If token is a GTIRB symbol, find references to it,
+        # otherwise find references to whatever block the cusor is in
+        symbol = symbol_for_name(ir, current_token)
+        if symbol is None or (
+            symbol.referent is not None and isinstance(symbol.referent, gtirb.block.ProxyBlock)
+        ):
+            reference_line = params.position.line
+        else:
+            # Cover the case of a symbol that has no referent
+            if symbol.referent is None:
+                ls.show_message(f" symbol for {current_token} not found.")
+                return None
+            reference_line = first_line_for_uuid(offset_by_line, symbol.referent.uuid)
+
+        offset = offset_by_line.get(reference_line)
+        if offset is None:
+            ls.show_message(f" no offset found for line {reference_line}.")
+            return None
+        logger.debug(f"offset found: {offset}")
+
+        references = list(symbolic_references(ir, offset.element_id.references))
+        if len(references) == 0:
+            ls.show_message(f" no references found for line {reference_line}.")
+            return None
+        logger.debug(f"references found: {references}")
+
+        offsets_and_referenced_symbols = offsets_at_references(ir, references)
+        if len(offsets_and_referenced_symbols) == 0:
+            ls.show_message(f" no offsets found for {references}.")
+            return None
+        logger.debug(f"offsets found: {offsets_and_referenced_symbols}")
+
+        # This is now lines and symbols
+        lines_and_referenced_symbols = list(
+            filter(
+                lambda it: isinstance(it[0], int),
+                map(
+                    lambda off_and_se: (
+                        offset_to_line(line_by_offset, off_and_se[0]),
+                        off_and_se[1],
+                    ),
+                    offsets_and_referenced_symbols,
+                ),
+            )
+        )
+        if len(lines_and_referenced_symbols) == 0:
+            ls.show_message(f" no lines for offsets {offsets_and_referenced_symbols}.")
+            return None
+        logger.debug(f"lines found: {lines_and_referenced_symbols}")
+
+        for (line, symbol) in lines_and_referenced_symbols:
+            reference_line: str = current_lines[line]
+            token = None
+            if reference_line.find(symbol.name) > 0:
+                token = symbol.name
+            if token:
+                locations.append(
+                    Location(
+                        uri=current_document.uri,
+                        range=Range(
+                            start=Position(line=line, character=reference_line.find(token)),
+                            end=Position(
+                                line=line, character=(reference_line.find(token) + len(token))
+                            ),
+                        ),
+                    )
+                )
+            else:
+                locations.append(
+                    Location(
+                        uri=current_document.uri,
+                        range=Range(
+                            start=Position(line=line, character=0),
+                            end=Position(line=line, character=len(reference_line)),
+                        ),
+                    )
+                )
+
+        return locations
+
+    @server.feature(HOVER, HoverOptions())
+    def get_hover(ls: GtirbLanguageServer, params: HoverParams) -> Optional[Hover]:
+        """GTIRB listing hover request."""
+        logger.debug(f"Hover request received uri: {params.text_document.uri}")
+        ls.show_message_log(f"Hover request received uri: {params.text_document.uri}")
+        ir = current_gtirbs[params.text_document.uri]
+        (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
+        offset = offset_by_line.get(params.position.line)
+
+        if offset:  # Get auxdata associated with current offset
+            auxdata = offset_to_auxdata(ir, offset)
+            markup_kind = MarkupKind.PlainText
+        else:  # Get function decompilation if possible
+            text = ls.workspace.get_document(params.text_document.uri).source
+            function_name = parse_function_name(text.splitlines()[params.position.line])
+            auxdata = function_decompilations(ir, function_name) if function_name else None
+            markup_kind = MarkupKind.Markdown
+
+        if auxdata:
+            logger.debug(f"Returning auxdata: {auxdata}")
+            return Hover(contents=MarkupContent(kind=markup_kind, value=auxdata))
+        else:
+            logger.debug("No auxdata found")
+            return Hover(
+                contents=MarkupContent(kind=MarkupKind.PlainText, value="No auxdata found")
+            )
+
+    return server
 
 
-def gtirb_stdio_server() -> None:
-    """Start the language server as a subprocess"""
-    server.start_io()
+def run_gtirb_server(mode: str, host: str = None, port: int = None) -> any:
+    """Start the language server"""
+    while True:
+        server = create_gtirb_server_instance()
+        if mode == "tcp":
+            server.start_tcp(host, port)
+        elif mode == "stdio":
+            server.start_io()
+        else:
+            logger.error(f"unrecognized transport: {mode}, should be tcp or stdio")
+            sys.exit(0)
+
+        # To reach this part of the loop, the server must have exited,
+        # if this was by keyboard interrupt, exit the program,
+        # otherwise start a new server.
+        if not server.lsp._shutdown:
+            logger.debug("keyboard interrupt, exiting...")
+            sys.exit(1)
+        del server
+        logger.debug("server restarting...")

@@ -37,7 +37,7 @@ from pygls.lsp.types import (
     TextDocumentItem,
     Position,
 )
-from gtirb_lsp_server.server import did_open, did_close, get_definition
+
 from gtirb_lsp_server.tests.fake_server import FakeServer, FakeDocument
 
 # Create a fake server
@@ -69,14 +69,14 @@ async def test_get_definition_success():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_definition()
     defParams = DefinitionParams(
         text_document=text_document_item,
         position=Position(line=cursor[0], character=cursor[1]),
     )
-    response = get_definition(server, defParams)
+    response = server.get_definition(defParams)
 
     # Verify result
     definition_found = False
@@ -90,7 +90,7 @@ async def test_get_definition_success():
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -106,7 +106,7 @@ async def test_get_definition_fail_no_document():
         text_document=text_document_item,
         position=Position(line=cursor[0], character=cursor[1]),
     )
-    response = get_definition(server, defParams)
+    response = server.get_definition(defParams)
     assert response is None
 
 
@@ -124,19 +124,19 @@ async def test_get_definition_fail_no_token():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_definition()
     defParams = DefinitionParams(
         text_document=text_document_item,
         position=Position(line=cursor[0], character=cursor[1]),
     )
-    response = get_definition(server, defParams)
+    response = server.get_definition(defParams)
     assert response is None
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -153,19 +153,19 @@ async def test_get_definition_fail_no_symbol():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_definition()
     defParams = DefinitionParams(
         text_document=text_document_item,
         position=Position(line=cursor[0], character=cursor[1]),
     )
-    response = get_definition(server, defParams)
+    response = server.get_definition(defParams)
     assert response is None
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)
 
 
 @pytest.mark.asyncio
@@ -184,16 +184,16 @@ async def test_get_definition_fail_no_definition():
 
     # Call server.did_open()
     openParams = DidOpenTextDocumentParams(text_document=text_document_item)
-    await did_open(server, openParams)
+    await server.did_open(openParams)
 
     # Call server.get_definition()
     defParams = DefinitionParams(
         text_document=text_document_item,
         position=Position(line=cursor[0], character=cursor[1]),
     )
-    response = get_definition(server, defParams)
+    response = server.get_definition(defParams)
     assert response is None
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(text_document=text_document_item)
-    did_close(server, closeParams)
+    server.did_close(closeParams)
