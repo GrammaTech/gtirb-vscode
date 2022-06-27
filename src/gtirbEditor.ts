@@ -23,7 +23,7 @@ import { getNonce } from './util';
 import { Disposable } from './dispose';
 import * as path from 'path';
 import { ISA } from './customCommands';
-import { client } from './extension';
+import { client, customIndexer } from './extension';
 
 import * as cp from 'child_process';
 import * as fs from 'fs';
@@ -121,8 +121,13 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
         const document: GtirbDocument = GtirbDocument.create(uri);
         const gtirbPath: string = uri.fsPath;
         const indexer = path.join(this.extensionPath, "indexer.py");
-        const asmGenerationMessage: string = await execFile(this.pythonPath, indexer, uri.fsPath);
-        client.outputChannel.appendLine(asmGenerationMessage);
+        if (customIndexer) {
+            const asmGenerationMessage: string = await customIndexer(uri.fsPath, indexer);
+            client.outputChannel.appendLine(asmGenerationMessage);
+        } else {
+            const asmGenerationMessage: string = await execFile(this.pythonPath, indexer, uri.fsPath);
+            client.outputChannel.appendLine(asmGenerationMessage);
+        }
         return document;
     }
 

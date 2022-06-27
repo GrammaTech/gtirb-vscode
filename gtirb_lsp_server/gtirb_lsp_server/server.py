@@ -125,6 +125,14 @@ modified_blocks = {}
 gtirbfile_path_map = {}
 indexfile_path_map = {}
 
+#
+# Always act like a remote server, even in STDIO mode.
+# This means that we do not assume any direct access to the client filesystem,
+# and will always request file contents be sent over LSP when needed.
+# This could be useful if, for example, the user wishes to start this server
+# over SSH, in Docker, or as a different user on the same system.
+force_remote = False
+
 
 class GtirbPushParams(BaseModel):
     uri: str
@@ -177,7 +185,7 @@ class GtirbLanguageServer(LanguageServer):
 
     def is_remote(self) -> bool:
         """Returns whether server is in remote mode"""
-        return self.server_remote
+        return self.server_remote or force_remote
 
     def get_gtirb_content(self, params: str, callback=None) -> Future:
         """Sends gtirb file request to the client.
@@ -636,7 +644,7 @@ async def configure_path_mapping(ls: GtirbLanguageServer, text_document: TextDoc
     Set file paths for GTIRB and index files
 
     Initializes the gtirbfile_path_map and indexfile_path_map global
-    indexes for the iven text document
+    indexes for the given text document
     """
     asmfile, gtirbfile = parse_listing_uri(text_document.uri)
     if asmfile is None or gtirbfile is None:
@@ -652,7 +660,10 @@ async def configure_path_mapping(ls: GtirbLanguageServer, text_document: TextDoc
     # For remote mode, we need unique file path to store the GTIRB
     # So hash the client IP and document uri together
     transport = ls.lsp.transport
-    peername = transport.get_extra_info("peername")
+    if hasattr(transport, "get_extra_info"):
+        peername = transport.get_extra_info("peername")
+    else:
+        peername = ("client",)
     client_path = peername[0] + ":" + text_document.uri
     hashname = hashlib.md5(client_path.encode("utf-8")).hexdigest() + ".gtirb"
     remote_gtirbfile = os.path.join(tempfile.gettempdir(), hashname)
@@ -1234,6 +1245,10 @@ def run_gtirb_server(mode: str, host: str = None, port: int = None) -> any:
         if mode == "tcp":
             server.set_remote(host, port)
             server.start_tcp(host, port)
+        elif mode == "stdio_remote":
+            global force_remote
+            force_remote = True
+            server.start_io()
         elif mode == "stdio":
             server.start_io()
         else:

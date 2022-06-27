@@ -29,6 +29,7 @@ DEFAULT_PORT = 3036
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_TCP_FLAG = False
 DEFAULT_STDIO_FLAG = True
+DEFAULT_FORCE_REMOTE = False
 
 
 def main():
@@ -62,6 +63,12 @@ def main():
         default=DEFAULT_STDIO_FLAG,
         help="Run server in STDIO mode.",
     )
+    parser.add_argument(
+        "--force-remote",
+        action="store_true",
+        default=DEFAULT_FORCE_REMOTE,
+        help="Assume client's filesystem is not directly accessible, even when run in STDIO mode.",
+    )
 
     args = parser.parse_args()
     logging_setup = False
@@ -79,6 +86,8 @@ def main():
 
     if args.tcp:
         run_gtirb_server("tcp", host=args.host, port=args.port)
+    elif args.force_remote:
+        run_gtirb_server("stdio_remote")
     else:
         run_gtirb_server("stdio")
 

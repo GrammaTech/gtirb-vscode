@@ -36,6 +36,7 @@ import {promises as fs} from 'fs';
 import * as url from 'url';
 
 export let client: LanguageClient;
+export let customIndexer: (gtirbPath: string, pyScript: string) => Promise<string>;
 
 function getClientOptions(): LanguageClientOptions {
     return {
@@ -134,23 +135,7 @@ interface GtirbPushParams {
 }
 
 
-export async function activate(context: vscode.ExtensionContext) {
-    const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
-    const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
-
-    const cwd = path.join(__dirname, "..");
-    const pythonPath = await getPythonPath();
-
-    if (!pythonPath) {
-        throw new Error("`python.pythonPath` is not set");
-    }
-
-    if (hostAddr === 'stdio') {
-        client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server.gtirb_lsp_server"], cwd);
-    } else {
-        client = startLangServerTCP(port!, hostAddr!);
-    }
-
+function registerLspHandlers(client: LanguageClient) {
     // Register request handlers for custom requests
     client.onReady().then(function (x: any) {
         // Response to a "Get GTIRB File" request from the server
@@ -173,6 +158,25 @@ export async function activate(context: vscode.ExtensionContext) {
             return{languageId: '', version: 0, text: "OK"};
         });
     });
+}
+
+export async function activate(context: vscode.ExtensionContext) {
+    const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
+    const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
+
+    const cwd = path.join(__dirname, "..");
+    const pythonPath = await getPythonPath();
+
+    if (!pythonPath) {
+        throw new Error("`python.pythonPath` is not set");
+    }
+
+    if (hostAddr === 'stdio') {
+        client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], cwd);
+    } else {
+        client = startLangServerTCP(port!, hostAddr!);
+    }
+    registerLspHandlers(client);
 
     // Register our custom editor providers
     context.subscriptions.push(client.start());
@@ -186,6 +190,24 @@ export async function activate(context: vscode.ExtensionContext) {
             getPathForListing(gtirbFile, isa)
         )
     );
+
+    return {
+        startCustomLspServer(command: string, args: string[], cwd: string) {
+            client.stop();
+            client = startLangServer(command, args, cwd);
+            registerLspHandlers(client);
+            context.subscriptions.push(client.start());
+        },
+        restartLspConnection() {
+            client.stop();
+            client = startLangServerTCP(port!, hostAddr!);
+            registerLspHandlers(client);
+            context.subscriptions.push(client.start());
+        },
+        setCustomIndexer(indexer: (gtirbPath: string, pyScript: string) => Promise<string>) {
+            customIndexer = indexer;
+        }
+    };
 }
 
 
