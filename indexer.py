@@ -72,7 +72,8 @@ def index_gtirb(filepath):
                 return False
 
             subprocess.run(
-                ["gtirb-pprinter", "--ir", filepath, "--asm", asm_file, "--listing-mode", "ui"]
+                ["gtirb-pprinter", "--ir", filepath, "--asm", asm_file, "--listing-mode", "ui"],
+                shell=False,
             )
             if not asm_file.is_file():
                 print(f"Failed to create ASM FILE {asm_file}")
