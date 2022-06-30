@@ -1166,6 +1166,7 @@ def run_gtirb_server(mode: str, host: str = None, port: int = None) -> any:
     while True:
         server = create_gtirb_server_instance()
         if mode == "tcp":
+            server.set_remote(host, port)
             server.start_tcp(host, port)
         elif mode == "stdio":
             server.start_io()
