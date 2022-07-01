@@ -156,6 +156,7 @@ class GtirbLanguageServer(LanguageServer):
     def __init__(self, loop=None, protocol_cls=LanguageServerProtocol, max_workers: int = 2):
         super().__init__(loop, protocol_cls, max_workers)
         self.rewrite_enabled = True
+        self.gtirb_types_imported = False
         self.server_remote = False
         self.host = None
         self.port = None
@@ -243,6 +244,47 @@ class NonTerminatingLanguageServerProtocol(LanguageServerProtocol):
         """Request from client which asks server to shutdown."""
         logger.info("Got bf_shutdown request, should really do something.")
         pass
+
+
+def get_symbol_by_referent(ir, uuid):
+    """Get a function name based on the block it references"""
+    block = ir.get_by_uuid(uuid)
+    if type(block) is not gtirb.block.CodeBlock:
+        print("new get symbol by reference failed to get block.")
+        return None
+    for ref in block.references:
+        if ref._payload.uuid == uuid:
+            return ref.name
+    return None
+
+
+def load_prototype_table(ir, types, c_str):
+    """Load a table of prototypes from aux data, if possible"""
+    module = ir.modules[0]
+    try:
+        type_table = module.aux_data["typeTable"]
+        prototype_table = module.aux_data["prototypeTable"]
+        function_entries = module.aux_data["functionEntries"]
+    except Exception as inst:
+        logger.info(f"Gtirb does not contain any prototype information {inst}.")
+        return None
+
+    function_to_prototype = {}
+    #    types = GtirbTypes(module)
+
+    type_table_data = type_table.data
+    prototype_table_data = prototype_table.data
+    function_entries_data = function_entries.data
+    for key in function_entries_data:
+        code_block = next(iter(function_entries_data[key]))
+        function_name = get_symbol_by_referent(ir, code_block.uuid)
+        if key in prototype_table_data:
+            function_type = prototype_table_data[key]
+        else:
+            continue
+        if function_type in type_table_data:
+            function_to_prototype[function_name] = c_str(types.get_type(function_type))
+    return function_to_prototype
 
 
 # Symbolic references may appear at addresses not represented by offsets in the
@@ -738,6 +780,16 @@ def create_gtirb_server_instance():
         logger.info("Disabling rewriting.")
         server.disable_rewrite()
 
+    # import of gtirb_types may fail if python version < 3.7
+    try:
+        from gtirb_types import GtirbTypes, c_str
+
+        server.gtirb_types_imported = True
+        logger.info("Type import successful.")
+    except Exception as inst:
+        logger.info(f"Type import failedi {inst}.")
+        pass
+
     @server.command(GtirbLanguageServer.CMD_GET_ADDRESS_OF_SYMBOL)
     async def get_address_of_symbol(ls: GtirbLanguageServer, *args) -> Optional[int]:
         """Get the address of a symbol"""
@@ -1146,8 +1198,20 @@ def create_gtirb_server_instance():
         else:  # Get function decompilation if possible
             text = ls.workspace.get_document(params.text_document.uri).source
             function_name = parse_function_name(text.splitlines()[params.position.line])
-            auxdata = function_decompilations(ir, function_name) if function_name else None
-            markup_kind = MarkupKind.Markdown
+            if function_name:
+                decomp = function_decompilations(ir, function_name)
+                if decomp:
+                    auxdata = decomp
+                    markup_kind = MarkupKind.Markdown
+                elif server.gtirb_types_imported:
+                    types = GtirbTypes(ir.modules[0])
+                    prototype_table = load_prototype_table(ir, types, c_str)
+                    if function_name in prototype_table:
+                        auxdata = prototype_table[function_name]
+                        markup_kind = MarkupKind.PlainText
+
+        #            auxdata = function_decompilations(ir, function_name) if function_name else None
+        #            markup_kind = MarkupKind.Markdown
 
         if auxdata:
             logger.debug(f"Returning auxdata: {auxdata}")
