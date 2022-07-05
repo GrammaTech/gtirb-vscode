@@ -1191,27 +1191,29 @@ def create_gtirb_server_instance():
         ir = current_gtirbs[params.text_document.uri]
         (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
         offset = offset_by_line.get(params.position.line)
+        current_line = ls.workspace.get_document(params.text_document.uri).source.splitlines()[
+            params.position.line
+        ]
 
+        auxdata = None
         if offset:  # Get auxdata associated with current offset
             auxdata = offset_to_auxdata(ir, offset)
             markup_kind = MarkupKind.PlainText
-        else:  # Get function decompilation if possible
-            text = ls.workspace.get_document(params.text_document.uri).source
-            function_name = parse_function_name(text.splitlines()[params.position.line])
+        if auxdata is None:
+            function_name = parse_function_name(current_line)
             if function_name:
                 decomp = function_decompilations(ir, function_name)
                 if decomp:
                     auxdata = decomp
                     markup_kind = MarkupKind.Markdown
-                elif server.gtirb_types_imported:
-                    types = GtirbTypes(ir.modules[0])
-                    prototype_table = load_prototype_table(ir, types, c_str)
-                    if function_name in prototype_table:
-                        auxdata = prototype_table[function_name]
-                        markup_kind = MarkupKind.PlainText
-
-        #            auxdata = function_decompilations(ir, function_name) if function_name else None
-        #            markup_kind = MarkupKind.Markdown
+        if auxdata is None:
+            if server.gtirb_types_imported:
+                types = GtirbTypes(ir.modules[0])
+                prototype_table = load_prototype_table(ir, types, c_str)
+                current_token: str = isolate_token(current_line, params.position.character)
+                if current_token in prototype_table:
+                    auxdata = prototype_table[current_token]
+                    markup_kind = MarkupKind.PlainText
 
         if auxdata:
             logger.debug(f"Returning auxdata: {auxdata}")
