@@ -787,7 +787,7 @@ def create_gtirb_server_instance():
         server.gtirb_types_imported = True
         logger.info("Type import successful.")
     except Exception as inst:
-        logger.info(f"Type import failedi {inst}.")
+        logger.info(f"Type import failed: {inst}.")
         pass
 
     @server.command(GtirbLanguageServer.CMD_GET_ADDRESS_OF_SYMBOL)
