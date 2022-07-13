@@ -21,6 +21,9 @@
         "onLanguage:gtgas",
         "onLanguage:gtmips",
         "onCommand:gtirb-vscode.getPathForListing",
+        "onCommand:gtirb-vscode.startCustomLspServer",
+        "onCommand:gtirb-vscode.retryLspConnection",
+        "onCommand:gtirb-vscode.registerCustomIndexer",
         "onCommand:gtirbGetAddressOfSymbol"
     ],
     "main": "./out/extension.js",
@@ -113,10 +116,30 @@
             {
                 "command": "gtirb-vscode.getPathForListing",
                 "title": "Get listing path for gtirb file"
+            },
+            {
+                "command": "gtirb-vscode.startCustomLspServer",
+                "title": "Runs a custom command to use as the GTIRB LSP server"
+            },
+            {
+                "command": "gtirb-vscode.retryLspConnection",
+                "title": "Retry GTIRB LSP client connection"
+            },
+            {
+                "command": "gtirb-vscode.registerCustomIndexer",
+                "title": "Set a callback for running the GTIRB indexer"
             }
         ],
         "menus": {
           "commandPalette": [
+            {
+                "command": "gtirb-vscode.startCustomLspServer",
+                "when": "false"
+            },
+            {
+                "command": "gtirb-vscode.registerCustomIndexer",
+                "when": "false"
+            },
             {
                 "command": "gtirbGetLineFromAddress",
                 "when": "inDebugMode"

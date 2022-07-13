@@ -188,26 +188,33 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
         vscode.commands.registerCommand('gtirb-vscode.getPathForListing', (gtirbFile, isa) =>
             getPathForListing(gtirbFile, isa)
-        )
-    );
-
-    return {
-        startCustomLspServer(command: string, args: string[], cwd: string) {
-            client.stop();
-            client = startLangServer(command, args, cwd);
-            registerLspHandlers(client);
-            context.subscriptions.push(client.start());
-        },
-        restartLspConnection() {
-            client.stop();
+        ),
+        vscode.commands.registerCommand('gtirb-vscode.startCustomLspServer',
+            (command: string, args: string[], cwd = context.extensionPath) => {
+                // Don't do anything if the LSP client is already working
+                if (client.initializeResult !== undefined) {
+                    return;
+                }
+                client = startLangServer(command, args, cwd);
+                registerLspHandlers(client);
+                context.subscriptions.push(client.start());
+            }
+        ),
+        vscode.commands.registerCommand('gtirb-vscode.retryLspConnection', () => {
+            // Don't do anything if the LSP client is already working
+            if (client.initializeResult !== undefined) {
+                return;
+            }
             client = startLangServerTCP(port!, hostAddr!);
             registerLspHandlers(client);
             context.subscriptions.push(client.start());
-        },
-        setCustomIndexer(indexer: (gtirbPath: string, pyScript: string) => Promise<string>) {
-            customIndexer = indexer;
-        }
-    };
+        }),
+        vscode.commands.registerCommand('gtirb-vscode.registerCustomIndexer',
+            (indexer: (gtirbPath: string, pyScript: string) => Promise<string>) => {
+                customIndexer = indexer;
+            }
+        ),
+    );
 }
 
 
