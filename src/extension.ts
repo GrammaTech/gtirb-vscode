@@ -164,7 +164,6 @@ export async function activate(context: vscode.ExtensionContext) {
     const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
     const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
 
-    const cwd = path.join(__dirname, "..");
     const pythonPath = await getPythonPath();
 
     if (!pythonPath) {
@@ -172,7 +171,8 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     if (hostAddr === 'stdio') {
-        client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], cwd);
+        client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"],
+            path.join(context.extensionPath, "gtirb_lsp_server"));
     } else {
         client = startLangServerTCP(port!, hostAddr!);
     }
