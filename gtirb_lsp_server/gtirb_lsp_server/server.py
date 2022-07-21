@@ -245,12 +245,10 @@ class NonTerminatingLanguageServerProtocol(LanguageServerProtocol):
 
     def bf_exit(self, *args) -> None:
         """Stops the server process."""
-        logger.info("Got bf_exit request, should really do something.")
         pass
 
     def bf_shutdown(self, *args) -> None:
         """Request from client which asks server to shutdown."""
-        logger.info("Got bf_shutdown request, should really do something.")
         pass
 
 
@@ -258,7 +256,7 @@ def get_symbol_by_referent(ir, uuid):
     """Get a function name based on the block it references"""
     block = ir.get_by_uuid(uuid)
     if type(block) is not gtirb.block.CodeBlock:
-        print("new get symbol by reference failed to get block.")
+        logger.info("new get symbol by reference failed to get block.")
         return None
     for ref in block.references:
         if ref._payload.uuid == uuid:
