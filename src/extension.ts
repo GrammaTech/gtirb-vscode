@@ -23,9 +23,18 @@ import * as net from "net";
 import * as path from "path";
 import * as vscode from 'vscode';
 import {
+    commands,
+    workspace,
+    DocumentSymbol,
+    SymbolKind,
+    Range,
+    Position,
+} from 'vscode';
+
+import {
     LanguageClient,
     LanguageClientOptions,
-    ServerOptions
+    ServerOptions,
 } from 'vscode-languageclient/node';
 
 import { GtirbEditorProvider } from './gtirbEditor';
@@ -37,6 +46,72 @@ import * as url from 'url';
 
 export let client: LanguageClient;
 export let customIndexer: (gtirbPath: string, pyScript: string) => Promise<string>;
+
+class GtirbDocumentSymbolProvider implements vscode.DocumentSymbolProvider
+{
+
+    public provideDocumentSymbols(
+            document: vscode.TextDocument,
+            token: vscode.CancellationToken): Promise<vscode.DocumentSymbol[]>
+    {
+
+        return new Promise((resolve, reject) =>
+        {
+            const symbols: DocumentSymbol[] = [];
+            // Only showing contents of module 0, this will need to
+            // change if GTIRBS start to have multiple modules.
+            const module_index = 0;
+
+            commands.executeCommand('gtirbGetModuleName', document.uri.toString(), module_index).then((module_name: string|any) =>
+            {
+                const docRange = new Range(
+                                        new Position (0,0),
+                                        new Position (0, document.lineCount -1)
+                                    );
+                const module_symbol = new DocumentSymbol(
+                                        module_name,            // name
+                                        "Module",               // detail
+                                        SymbolKind.Module,      // kind
+                                        docRange,               // full range
+                                        docRange                // highlight range
+                                    );
+                symbols.push(module_symbol);
+                return (module_symbol);
+
+            }).then ((module_symbol: DocumentSymbol|any) =>
+            {
+                commands.executeCommand('gtirbGetFunctionLocations', document.uri.toString()).then((symlist: any) =>
+                {
+                    for (const location of symlist)
+                    {
+                        const lineText = document.lineAt(location.range.start.line).text;
+                        const token = lineText.substring(
+                                                location.range.start.character,
+                                                location.range.end.character
+                                            );
+                        const fullRange = new Range(
+                                                new Position(location.range.start.line, 0),
+                                                new Position(location.range.start.line+1, 0)
+                                            );
+                        const function_symbol = new DocumentSymbol(
+                                        token,                  // name
+                                        "Function",             // detail
+                                        SymbolKind.Function,    // kind
+                                        fullRange,              // full range
+                                        location.range          // highlight range
+                        );
+                        module_symbol.children.push(function_symbol);
+                    }
+                }).then(() =>
+                {
+                    resolve(symbols);
+                });
+            });
+        });
+    }
+}
+
+
 
 function getClientOptions(): LanguageClientOptions {
     return {
@@ -161,8 +236,8 @@ function registerLspHandlers(client: LanguageClient) {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-    const port = vscode.workspace.getConfiguration().get<number>('gtirb.server.port');
-    const hostAddr = vscode.workspace.getConfiguration().get<string>('gtirb.server.host');
+    const port = workspace.getConfiguration().get<number>('gtirb.server.port');
+    const hostAddr = workspace.getConfiguration().get<string>('gtirb.server.host');
 
     const pythonPath = await getPythonPath();
 
@@ -183,13 +258,13 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(GtirbEditorProvider.register(context, pythonPath));
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('gtirb-vscode.goToAddress', () => {
+        commands.registerCommand('gtirb-vscode.goToAddress', () => {
             getAddressAndJump();
         }),
-        vscode.commands.registerCommand('gtirb-vscode.getPathForListing', (gtirbFile, isa) =>
+        commands.registerCommand('gtirb-vscode.getPathForListing', (gtirbFile, isa) =>
             getPathForListing(gtirbFile, isa)
         ),
-        vscode.commands.registerCommand('gtirb-vscode.startCustomLspServer',
+        commands.registerCommand('gtirb-vscode.startCustomLspServer',
             (command: string, args: string[], cwd = context.extensionPath) => {
                 // Don't do anything if the LSP client is already working
                 if (client.initializeResult !== undefined) {
@@ -200,7 +275,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 context.subscriptions.push(client.start());
             }
         ),
-        vscode.commands.registerCommand('gtirb-vscode.retryLspConnection', () => {
+        commands.registerCommand('gtirb-vscode.retryLspConnection', () => {
             // Don't do anything if the LSP client is already working
             if (client.initializeResult !== undefined) {
                 return;
@@ -209,12 +284,17 @@ export async function activate(context: vscode.ExtensionContext) {
             registerLspHandlers(client);
             context.subscriptions.push(client.start());
         }),
-        vscode.commands.registerCommand('gtirb-vscode.registerCustomIndexer',
+        commands.registerCommand('gtirb-vscode.registerCustomIndexer',
             (indexer: (gtirbPath: string, pyScript: string) => Promise<string>) => {
                 customIndexer = indexer;
             }
         ),
+        vscode.languages.registerDocumentSymbolProvider(
+            {scheme: "file", language: "gtmips"},
+            new GtirbDocumentSymbolProvider()
+        )
     );
+
 }
 
 

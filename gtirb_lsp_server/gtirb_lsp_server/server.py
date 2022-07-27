@@ -156,6 +156,8 @@ class GtirbLanguageServer(LanguageServer):
     CMD_GET_LINE_FROM_ADDRESS = "gtirbGetLineFromAddress"
     CMD_GET_ADDRESS_OF_SYMBOL = "gtirbGetAddressOfSymbol"
     CMD_GET_LINE_ADDRESS_LIST = "gtirbGetLineAddressList"
+    CMD_GET_FUNCTION_LOCATIONS = "gtirbGetFunctionLocations"
+    CMD_GET_MODULE_NAME = "gtirbGetModuleName"
     # Custom requests
     # Must match a registered handler in the client
     REQ_GET_GTIRB_FILE = "gtirbGetGtirbFile"
@@ -821,6 +823,98 @@ def create_gtirb_server_instance():
 
         block = symbol.referent
         return hex(block.address)
+
+    @server.command(GtirbLanguageServer.CMD_GET_MODULE_NAME)
+    async def get_module_name(ls: GtirbLanguageServer, *args) -> Optional[str]:
+        """Get the address of a symbol"""
+        document_uri = args[0][0]
+        module_index = args[0][1]
+        if document_uri not in ls.workspace.documents:
+            ls.show_message(f" No module name for {document_uri}")
+            return None
+        ir = current_gtirbs[document_uri]
+        if module_index < 0 or module_index >= len(ir.modules):
+            logger.warning(f" module index out of range: {document_uri}:{module_index}")
+            return None
+        module = ir.modules[module_index]
+        if len(module.name) > 0:
+            return module.name
+        else:
+            return "module" + str(module_index)
+
+    @server.command(GtirbLanguageServer.CMD_GET_FUNCTION_LOCATIONS)
+    async def get_function_locations(ls: GtirbLanguageServer, *args) -> Optional[LocationList]:
+        """Get a list of functions and their locations in the listing file"""
+        document_uri = args[0][0]
+        if document_uri not in ls.workspace.documents:
+            ls.show_message(f" No {document_uri} in document index")
+            return None
+
+        # Get a list of function entries
+        ir = current_gtirbs[document_uri]
+        module = ir.modules[0]
+        try:
+            function_names = module.aux_data["functionNames"]
+        except Exception as inst:
+            logger.info(f"Gtirb does not contain function information {inst}.")
+            return None
+
+        # Retrieve the offsets for the URI
+        (offset_by_line, line_by_offset) = current_indexes[document_uri]
+
+        # Generate a list of functions from the function entries auxdata
+        gtirb_funclist = []
+        function_names_data = function_names.data
+        for key in function_names_data:
+            symbol = function_names_data[key]
+            function_name = symbol.name
+
+            # Use GTIRB to get symbol object from function name
+            definition_line = first_line_for_uuid(offset_by_line, symbol.referent.uuid)
+
+            if definition_line:
+                tup = (function_name, definition_line, definition_line + 1)
+                gtirb_funclist.append(tup)
+
+        # Generate a list of locations from the defintion lines
+        current_document: Document = ls.workspace.get_document(document_uri)
+        current_lines: StringList = current_document.source.splitlines()
+        locations: LocationList = []
+
+        for tup in gtirb_funclist:
+            symbol = tup[0]
+            line_num = tup[1]
+
+            # Adjust line number because function labels are always
+            # before the actual code in the listing
+            line_num = preceding_function_line(current_lines, symbol, line_num)
+            line_text: str = current_lines[line_num]
+
+            # The name should be in the line text,
+            # But if it isn't use the whole line as range.
+            start_pos = line_text.find(symbol)
+            if start_pos == -1:
+                locations.append(
+                    Location(
+                        uri=current_document.uri,
+                        range=Range(
+                            start=Position(line=line_num, character=0),
+                            end=Position(line=line_num, character=len(line_text)),
+                        ),
+                    )
+                )
+            else:
+                locations.append(
+                    Location(
+                        uri=current_document.uri,
+                        range=Range(
+                            start=Position(line=line_num, character=start_pos),
+                            end=Position(line=line_num, character=(start_pos + len(symbol))),
+                        ),
+                    )
+                )
+
+        return locations
 
     @server.command(GtirbLanguageServer.CMD_GET_LINE_ADDRESS_LIST)
     async def get_line_address_list(ls: GtirbLanguageServer, *args) -> List[List[int]]:
