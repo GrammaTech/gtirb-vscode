@@ -268,28 +268,18 @@ def get_symbol_by_referent(ir, uuid):
 
 def load_prototype_table(ir, types, c_str):
     """Load a table of prototypes from aux data, if possible"""
-    module = ir.modules[0]
-    try:
-        type_table = module.aux_data["typeTable"]
-        prototype_table = module.aux_data["prototypeTable"]
-        function_entries = module.aux_data["functionEntries"]
-    except Exception as inst:
-        logger.info(f"Gtirb does not contain any prototype information {inst}.")
-        return None
+    aux_data: gtirb.AuxData = ir.modules[0].aux_data
+    function_names_data: Dict = aux_data.get("functionNames", gtirb.AuxData({}, "")).data
+    prototype_table_data: Dict = aux_data.get("prototypeTable", gtirb.AuxData({}, "")).data
+    type_table_data: Dict = aux_data.get("typeTable", gtirb.AuxData({}, "")).data
 
     function_to_prototype = {}
-    #    types = GtirbTypes(module)
-
-    type_table_data = type_table.data
-    prototype_table_data = prototype_table.data
-    function_entries_data = function_entries.data
-    for key in function_entries_data:
-        code_block = next(iter(function_entries_data[key]))
-        function_name = get_symbol_by_referent(ir, code_block.uuid)
-        if key in prototype_table_data:
-            function_type = prototype_table_data[key]
+    for key in prototype_table_data:
+        if key in function_names_data:
+            function_name = function_names_data[key].name
         else:
             continue
+        function_type = prototype_table_data[key]
         if function_type in type_table_data:
             function_to_prototype[function_name] = c_str(types.get_type(function_type))
     return function_to_prototype
@@ -1311,12 +1301,17 @@ def create_gtirb_server_instance():
                     markup_kind = MarkupKind.Markdown
         if auxdata is None:
             if server.gtirb_types_imported:
-                types = GtirbTypes(ir.modules[0])
-                prototype_table = load_prototype_table(ir, types, c_str)
-                current_token: str = isolate_token(current_line, params.position.character)
-                if current_token in prototype_table:
-                    auxdata = prototype_table[current_token]
-                    markup_kind = MarkupKind.PlainText
+                # Types are supported so lets see if the thing being hovered over is
+                # a function for which we have a prototype. But preload functionNames, if
+                # that is empty no reason to continue.
+                token: str = isolate_token(current_line, params.position.character)
+                if len(token) > 0:
+                    function_name = token[:-4] if token.endswith("@PLT") else token
+                    types = GtirbTypes(ir.modules[0])
+                    prototype_table = load_prototype_table(ir, types, c_str)
+                    if function_name in prototype_table:
+                        auxdata = prototype_table[function_name]
+                        markup_kind = MarkupKind.PlainText
 
         if auxdata:
             logger.debug(f"Returning auxdata: {auxdata}")
