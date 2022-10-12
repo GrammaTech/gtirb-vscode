@@ -923,12 +923,14 @@ def create_gtirb_server_instance():
         line = address_to_line(ir, current_indexes[document_uri][1], address)
         if line:
             # only the line number is really used, set character to 0
-            range = Range(start=Position(line=line, character=0), end=Position(line=line, character=0),)
+            range = Range(
+                start=Position(line=line, character=0),
+                end=Position(line=line, character=0),
+            )
             return range
         # no line found, send message to UI
         ls.show_message(f" No line for {address_str}")
         return None
-
 
     @server.command(GtirbLanguageServer.CMD_GET_LINE_ADDRESS_LIST)
     async def get_line_address_list(ls: GtirbLanguageServer, *args) -> List[List[int]]:
