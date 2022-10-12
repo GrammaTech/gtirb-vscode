@@ -906,6 +906,30 @@ def create_gtirb_server_instance():
 
         return locations
 
+    @server.command(GtirbLanguageServer.CMD_GET_LINE_FROM_ADDRESS)
+    async def get_line_from_address(ls: GtirbLanguageServer, *args) -> Optional[Range]:
+        """Get the line number for an address for a document"""
+        document_uri = args[0][0]
+        address_str = args[0][1]
+        if document_uri not in ls.workspace.documents:
+            ls.show_message(f" No address mapping for {document_uri}")
+            return None
+        try:
+            address = int(address_str, 16)
+        except Exception:
+            ls.show_message(f" Invalid address {address_str}")
+            return None
+        ir = current_gtirbs[document_uri]
+        line = address_to_line(ir, current_indexes[document_uri][1], address)
+        if line:
+            # only the line number is really used, set character to 0
+            range = Range(start=Position(line=line, character=0), end=Position(line=line, character=0),)
+            return range
+        # no line found, send message to UI
+        ls.show_message(f" No line for {address_str}")
+        return None
+
+
     @server.command(GtirbLanguageServer.CMD_GET_LINE_ADDRESS_LIST)
     async def get_line_address_list(ls: GtirbLanguageServer, *args) -> List[List[int]]:
         """Get a list of (line, address) pairs for every line with an instruction"""
