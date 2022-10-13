@@ -808,7 +808,7 @@ def create_gtirb_server_instance():
             or isinstance(symbol.referent, gtirb.block.ProxyBlock)
         ):
             # no address available, log message to UI
-            ls.show_message(f" {symbol_name} does not have an address")
+            logger.warning(f" {symbol_name} does not have an address")
             return None
 
         block = symbol.referent
