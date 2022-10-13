@@ -7,7 +7,7 @@ stages:
     - export
 
 default:
-  image: python:3.7-slim
+  image: python:3.8-slim
   tags: ["kubernetes"]
 
 check-format:
