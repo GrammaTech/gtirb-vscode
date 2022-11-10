@@ -822,6 +822,9 @@ def create_gtirb_server_instance():
         if document_uri not in ls.workspace.documents:
             ls.show_message(f" No module name for {document_uri}")
             return None
+        if document_uri not in current_gtirbs:
+            ls.show_message(f" {document_uri} has not been indexed yet.")
+            return None
         ir = current_gtirbs[document_uri]
         if module_index < 0 or module_index >= len(ir.modules):
             logger.warning(f" module index out of range: {document_uri}:{module_index}")
