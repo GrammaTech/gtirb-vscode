@@ -255,11 +255,11 @@ export async function activate(context: vscode.ExtensionContext) {
     if (hostAddr === 'stdio') {
         if (client === null) {
             client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], path.join(context.extensionPath, "gtirb_lsp_server"));
-        } 
+        }
     } else {
         if (client === null) {
             client = startLangServerTCP(port!, hostAddr!);
-        } 
+        }
     }
     registerLspHandlers(client);
 
@@ -280,8 +280,8 @@ export async function activate(context: vscode.ExtensionContext) {
                 if (client === null) {
                     client = startLangServer(command, args, cwd);
                     registerLspHandlers(client);
-                    context.subscriptions.push(client.start());                    
-                } 
+                    context.subscriptions.push(client.start());
+                }
             }
         ),
         commands.registerCommand('gtirb-vscode.retryLspConnection', () => {
@@ -289,8 +289,8 @@ export async function activate(context: vscode.ExtensionContext) {
             if (client === null) {
                 client = startLangServerTCP(port!, hostAddr!);
                 registerLspHandlers(client);
-                context.subscriptions.push(client.start());    
-            } 
+                context.subscriptions.push(client.start());
+            }
         }),
         commands.registerCommand('gtirb-vscode.registerCustomIndexer',
             (indexer: (gtirbPath: string, pyScript: string) => Promise<string>) => {
