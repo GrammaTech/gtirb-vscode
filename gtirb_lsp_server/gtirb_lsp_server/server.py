@@ -707,16 +707,13 @@ async def get_line_from_address(ls: GtirbLanguageServer, *args) -> Optional[Rang
     document_uri = args[0][0]
     address_str = args[0][1]
     logger.debug(f"Command: get_line_from_address, uri: {document_uri}")
-    if document_uri not in ls.workspace.documents:
+    if document_uri not in ls.workspace.documents or document_uri not in current_gtirbs:
         ls.show_message(f" No address mapping for {document_uri}")
         return None
     try:
         address = int(address_str, 16)
     except Exception:
         ls.show_message(f" Invalid address {address_str}")
-        return None
-    if document_uri not in current_gtirbs:
-        ls.show_message(f" {document_uri} has not been indexed yet.")
         return None
     ir = current_gtirbs[document_uri]
     line = address_to_line(ir, current_indexes[document_uri][1], address)
@@ -800,11 +797,8 @@ def create_gtirb_server_instance():
         document_uri = args[0][0]
         symbol_name = args[0][1]
         logger.debug(f"Command: get_address_of_symbol, uri: {document_uri}")
-        if document_uri not in ls.workspace.documents:
+        if document_uri not in ls.workspace.documents or document_uri not in current_gtirbs:
             ls.show_message(f" No address mapping for {document_uri}")
-            return None
-        if document_uri not in current_gtirbs:
-            ls.show_message(f" {document_uri} has not been indexed yet.")
             return None
         ir = current_gtirbs[document_uri]
         symbol = symbol_for_name(ir, symbol_name)
@@ -825,12 +819,10 @@ def create_gtirb_server_instance():
         """Get the address of a symbol"""
         document_uri = args[0][0]
         module_index = args[0][1]
-        if document_uri not in ls.workspace.documents:
+        if document_uri not in ls.workspace.documents or document_uri not in current_gtirbs:
             ls.show_message(f" No module name for {document_uri}")
             return None
-        if document_uri not in current_gtirbs:
-            ls.show_message(f" {document_uri} has not been indexed yet.")
-            return None
+
         ir = current_gtirbs[document_uri]
         if module_index < 0 or module_index >= len(ir.modules):
             logger.warning(f" module index out of range: {document_uri}:{module_index}")
@@ -845,14 +837,11 @@ def create_gtirb_server_instance():
     async def get_function_locations(ls: GtirbLanguageServer, *args) -> Optional[LocationList]:
         """Get a list of functions and their locations in the listing file"""
         document_uri = args[0][0]
-        if document_uri not in ls.workspace.documents:
+        if document_uri not in ls.workspace.documents or document_uri not in current_gtirbs:
             ls.show_message(f" No {document_uri} in document index")
             return None
 
         # Get a list of function entries
-        if document_uri not in current_gtirbs:
-            ls.show_message(f" {document_uri} has not been indexed yet.")
-            return None
         ir = current_gtirbs[document_uri]
         module = ir.modules[0]
         try:
@@ -923,16 +912,14 @@ def create_gtirb_server_instance():
         """Get the line number for an address for a document"""
         document_uri = args[0][0]
         address_str = args[0][1]
-        if document_uri not in ls.workspace.documents:
+        if document_uri not in ls.workspace.documents or document_uri not in current_gtirbs:
             ls.show_message(f" No address mapping for {document_uri}")
             return None
+
         try:
             address = int(address_str, 16)
         except Exception:
             ls.show_message(f" Invalid address {address_str}")
-            return None
-        if document_uri not in current_gtirbs:
-            ls.show_message(f" {document_uri} has not been indexed yet.")
             return None
         ir = current_gtirbs[document_uri]
         line = address_to_line(ir, current_indexes[document_uri][1], address)
