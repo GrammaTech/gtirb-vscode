@@ -123,10 +123,10 @@ export class GtirbEditorProvider implements vscode.CustomReadonlyEditorProvider<
         const indexer = path.join(this.extensionPath, "indexer.py");
         if (customIndexer) {
             const asmGenerationMessage: string = await customIndexer(uri.fsPath, indexer);
-            client.outputChannel.appendLine(asmGenerationMessage);
+            client?.outputChannel.appendLine(asmGenerationMessage);
         } else {
             const asmGenerationMessage: string = await execFile(this.pythonPath, indexer, uri.fsPath);
-            client.outputChannel.appendLine(asmGenerationMessage);
+            client?.outputChannel.appendLine(asmGenerationMessage);
         }
         return document;
     }

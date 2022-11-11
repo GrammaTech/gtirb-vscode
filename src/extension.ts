@@ -44,10 +44,8 @@ import { getAddressAndJump, getPathForListing } from './customCommands';
 import {promises as fs} from 'fs';
 import * as url from 'url';
 
-export let client: LanguageClient;
+export let client: LanguageClient|null = null;
 export let customIndexer: (gtirbPath: string, pyScript: string) => Promise<string>;
-
-let lspClient: any = null;
 
 class GtirbDocumentSymbolProvider implements vscode.DocumentSymbolProvider
 {
@@ -56,7 +54,8 @@ class GtirbDocumentSymbolProvider implements vscode.DocumentSymbolProvider
             document: vscode.TextDocument,
             token: vscode.CancellationToken): Promise<vscode.DocumentSymbol[]>
     {
-        if (client.initializeResult === undefined) {
+        // Don't go on if the LSP connection is not ready
+        if (client?.initializeResult === undefined) {
             return new Promise(() =>
             {
                 return null;
@@ -142,7 +141,6 @@ function isStartedInDebugMode(): boolean {
 }
 
 function startLangServerTCP(port: number, hostAddr: string): LanguageClient {
-    console.log("SLS-TCP enter");
     const serverOptions: ServerOptions = () => {
         return new Promise((resolve /*, reject */) => {
             const clientSocket = new net.Socket();
@@ -168,7 +166,6 @@ function startLangServer(
     args: string[],
     cwd: string
 ): LanguageClient {
-    console.log("SLS enter");
     const serverOptions: ServerOptions = {
         args,
         command,
@@ -254,27 +251,20 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!pythonPath) {
         throw new Error("`python.pythonPath` is not set");
     }
-    console.log("Activating...");
 
     if (hostAddr === 'stdio') {
-        if (lspClient === null) {
-            lspClient = await startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], path.join(context.extensionPath, "gtirb_lsp_server"));
-        } else {
-            console.log("LSP was already created.");
-        }
-        client = lspClient;
+        if (client === null) {
+            client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], path.join(context.extensionPath, "gtirb_lsp_server"));
+        } 
     } else {
-        if (lspClient === null) {
-            lspClient = startLangServerTCP(port!, hostAddr!);
-        } else {
-            console.log("LSP was alreadt created");
-        }
-        client = lspClient;
+        if (client === null) {
+            client = startLangServerTCP(port!, hostAddr!);
+        } 
     }
-    registerLspHandlers(lspClient);
+    registerLspHandlers(client);
 
     // Register our custom editor providers
-    context.subscriptions.push(lspClient.start());
+    context.subscriptions.push(client.start());
     context.subscriptions.push(GtirbEditorProvider.register(context, pythonPath));
 
     context.subscriptions.push(
@@ -286,34 +276,21 @@ export async function activate(context: vscode.ExtensionContext) {
         ),
         commands.registerCommand('gtirb-vscode.startCustomLspServer',
             (command: string, args: string[], cwd = context.extensionPath) => {
-                console.log("SCLS enter");
                 // Don't do anything if the LSP client is already working
-                //if (client.initializeResult !== undefined) {
-                //    return;
-                //}
-                if (lspClient === null) {
-                    lspClient = startLangServer(command, args, cwd);
-                    registerLspHandlers(lspClient);
-                    context.subscriptions.push(lspClient.start());                    
-                    client = lspClient;
-                } else {
-                    console.log("startCLSP: LSP was already created");
-                }
+                if (client === null) {
+                    client = startLangServer(command, args, cwd);
+                    registerLspHandlers(client);
+                    context.subscriptions.push(client.start());                    
+                } 
             }
         ),
         commands.registerCommand('gtirb-vscode.retryLspConnection', () => {
             // Don't do anything if the LSP client is already working
-            //if (lspClient.initializeResult !== undefined) {
-            //    return;
-            //}
-            if (lspClient === null) {
-                lspClient = startLangServerTCP(port!, hostAddr!);
-                registerLspHandlers(lspClient);
-                context.subscriptions.push(lspClient.start());    
-                client = lspClient;
-            } else {
-                console.log ("Reload LSP was already created");
-            }
+            if (client === null) {
+                client = startLangServerTCP(port!, hostAddr!);
+                registerLspHandlers(client);
+                context.subscriptions.push(client.start());    
+            } 
         }),
         commands.registerCommand('gtirb-vscode.registerCustomIndexer',
             (indexer: (gtirbPath: string, pyScript: string) => Promise<string>) => {
@@ -325,11 +302,12 @@ export async function activate(context: vscode.ExtensionContext) {
             new GtirbDocumentSymbolProvider()
         )
     );
-
 }
 
 
 export function deactivate(): Thenable<void> {
     //client.sendRequest("exit"); (needed?)
+    const lspClient: LanguageClient|null = client;
+    client = null;
     return lspClient ? lspClient.stop() : Promise.resolve();
 }

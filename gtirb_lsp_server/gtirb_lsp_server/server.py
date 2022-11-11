@@ -715,6 +715,9 @@ async def get_line_from_address(ls: GtirbLanguageServer, *args) -> Optional[Rang
     except Exception:
         ls.show_message(f" Invalid address {address_str}")
         return None
+    if document_uri not in current_gtirbs:
+        ls.show_message(f" {document_uri} has not been indexed yet.")
+        return None
     ir = current_gtirbs[document_uri]
     line = address_to_line(ir, current_indexes[document_uri][1], address)
     if line:
@@ -800,6 +803,9 @@ def create_gtirb_server_instance():
         if document_uri not in ls.workspace.documents:
             ls.show_message(f" No address mapping for {document_uri}")
             return None
+        if document_uri not in current_gtirbs:
+            ls.show_message(f" {document_uri} has not been indexed yet.")
+            return None
         ir = current_gtirbs[document_uri]
         symbol = symbol_for_name(ir, symbol_name)
         if (
@@ -844,6 +850,9 @@ def create_gtirb_server_instance():
             return None
 
         # Get a list of function entries
+        if document_uri not in current_gtirbs:
+            ls.show_message(f" {document_uri} has not been indexed yet.")
+            return None
         ir = current_gtirbs[document_uri]
         module = ir.modules[0]
         try:
@@ -921,6 +930,9 @@ def create_gtirb_server_instance():
             address = int(address_str, 16)
         except Exception:
             ls.show_message(f" Invalid address {address_str}")
+            return None
+        if document_uri not in current_gtirbs:
+            ls.show_message(f" {document_uri} has not been indexed yet.")
             return None
         ir = current_gtirbs[document_uri]
         line = address_to_line(ir, current_indexes[document_uri][1], address)
@@ -1310,6 +1322,9 @@ def create_gtirb_server_instance():
         """GTIRB listing hover request."""
         logger.debug(f"Hover request received uri: {params.text_document.uri}")
         ls.show_message_log(f"Hover request received uri: {params.text_document.uri}")
+        if params.text_document.uri not in current_gtirbs:
+            ls.show_message(f" {document_uri} has not been indexed yet.")
+            return None
         ir = current_gtirbs[params.text_document.uri]
         (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]
         offset = offset_by_line.get(params.position.line)
