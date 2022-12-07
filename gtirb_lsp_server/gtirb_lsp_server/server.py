@@ -389,7 +389,7 @@ def block_text(
     return "\n".join(
         list(
             map(
-                lambda l: asm_lines[l].split("#")[0].rstrip(),
+                lambda line: asm_lines[line].split("#")[0].rstrip(),
                 block_lines(line_by_offset, block),
             )
         )

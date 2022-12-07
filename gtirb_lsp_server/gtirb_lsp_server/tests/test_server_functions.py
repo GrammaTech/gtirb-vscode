@@ -254,7 +254,8 @@ class InitialIndexTestDriver(unittest.TestCase):
             len(
                 list(
                     filter(
-                        lambda l: (l > target_start_pair[0]) and (l < target_start_pair[0] + 10),
+                        lambda line: (line > target_start_pair[0])
+                        and (line < target_start_pair[0] + 10),
                         set(offset_by_line.keys()).difference(set(new_offset_by_line.keys())),
                     )
                 )

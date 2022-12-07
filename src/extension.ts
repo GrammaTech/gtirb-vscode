@@ -276,8 +276,11 @@ export async function activate(context: vscode.ExtensionContext) {
         ),
         commands.registerCommand('gtirb-vscode.startCustomLspServer',
             (command: string, args: string[], cwd = context.extensionPath) => {
-                // Don't do anything if the LSP client is already working
-                if (client === null) {
+                // This command can be used to start an LSP server using the GTIRB and
+                // python versions in a docker container. Client could be null if a normal
+                // activation hasn't created the client yet, and no initializeResult
+                // means that a client has been created but isn't working for whatever reason.
+                if (client?.initializeResult === undefined) {
                     client = startLangServer(command, args, cwd);
                     registerLspHandlers(client);
                     context.subscriptions.push(client.start());
@@ -286,7 +289,7 @@ export async function activate(context: vscode.ExtensionContext) {
         ),
         commands.registerCommand('gtirb-vscode.retryLspConnection', () => {
             // Don't do anything if the LSP client is already working
-            if (client === null) {
+            if (client?.initializeResult === undefined) {
                 client = startLangServerTCP(port!, hostAddr!);
                 registerLspHandlers(client);
                 context.subscriptions.push(client.start());

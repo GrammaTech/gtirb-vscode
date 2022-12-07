@@ -1,5 +1,6 @@
 variables:
-  COVERAGE_FAIL_BELOW: 80
+  COVERAGE_FAIL_BELOW: 75
+# TODO Bring up to 80%
 
 stages:
     - check-format
@@ -8,7 +9,7 @@ stages:
 
 default:
   image: python:3.8-slim
-  tags: ["kubernetes"]
+  tags: ["shared"]
 
 check-format:
   stage: check-format
@@ -25,17 +26,30 @@ check-format:
 
 test-stable-18:
   stage: test
-  image: $CI_REGISTRY/rewriting/ddisasm/ubuntu18
+  image: ubuntu:18.04
   script:
+    - apt-get update -y
+    - apt-get install -y wget gnupg2
     - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
     - echo "deb https://download.grammatech.com/gtirb/files/apt-repo bionic stable" >> /etc/apt/sources.list
     - apt-get update -y
-    - apt-get install -y gtirb-pprinter ddisasm
-    - pip3 install --upgrade pip
+    - apt-get install -y software-properties-common
+    - add-apt-repository -y ppa:mhier/libboost-latest
+    - echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections
+    - echo 'tzdata tzdata/Zones/Europe select Paris' | debconf-set-selections
+    - DEBIAN_FRONTEND="noninteractive" apt-get install -y libboost1.67
+    - apt-get install -y python3.6 python3-pip
+    - apt-get install -y libgtirb-1.10.6
+    - apt-get install -y libgtirb-pprinter-1.8.2
+    - apt-get install -y gtirb-pprinter-1.8.2
     - cd gtirb_lsp_server
+    - pip3 install pygls==0.11.3
     - pip3 install -r requirements-dev.txt
-    - pip3 install -e .[rewriting]
+    - pip3 install gtirb==1.10.7
+    - pip3 install -e .
     - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW
+# Does not test rewriting packages due to inability to install mcasm.
+# TODO Get updated install info for this package
 
 #test-unstable-18:
 #  stage: test
@@ -53,15 +67,25 @@ test-stable-18:
 
 test-stable-20:
   stage: test
-  image: $CI_REGISTRY/rewriting/ddisasm/ubuntu20
+  image: ubuntu:20.04
   script:
+    - apt-get update -y
+    - apt-get install -y wget gnupg2
     - wget -O - https://download.grammatech.com/gtirb/files/apt-repo/conf/apt.gpg.key | apt-key add -
     - echo "deb https://download.grammatech.com/gtirb/files/apt-repo focal stable" >> /etc/apt/sources.list
     - apt-get update -y
-    - apt-get install -y gtirb-pprinter ddisasm
+    - echo 'tzdata tzdata/Areas select Europe' | debconf-set-selections
+    - echo 'tzdata tzdata/Zones/Europe select Paris' | debconf-set-selections
+    - DEBIAN_FRONTEND="noninteractive" apt-get install -y libboost1.67
+    - apt-get install -y python3.8 pip
+    - apt-get install -y libgtirb-1.10.8
+    - apt-get install -y libgtirb-pprinter-1.8.4
+    - apt-get install -y gtirb-pprinter-1.8.4
     - cd gtirb_lsp_server
-    - pip3 install -r requirements-dev.txt
-    - pip3 install -e .
+    - python3.8 -m pip install pygls==0.12.2
+    - python3.8 -m pip install -r requirements-dev.txt
+    - python3.8 -m pip install gtirb==1.10.8
+    - python3.8 -m pip install -e .
     - pytest --cov=gtirb_lsp_server --cov-fail-under=$COVERAGE_FAIL_BELOW
 
 #test-unstable-20:
