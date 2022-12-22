@@ -6,7 +6,6 @@ A VSCode extension for viewing, navigating, and rewriting [GTIRB][], Grammatech'
 
 ## Quickstart
 - Install gtirb-pprinter using instructions [installing][].
-- Install pygls with pip, for example `pip install pygls`.
 - Download the latest pre-built extension from the package registry and install it in VSCode (see "Installing the pre-built extension" below).
 - Restart VSCode.
 - Open a GTIRB file in VSCode which will now activate the extension.

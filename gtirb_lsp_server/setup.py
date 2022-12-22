@@ -20,8 +20,9 @@
 # reflect the position or policy of the Government and no official
 # endorsement should be inferred.
 import imp
-import setuptools
 import os
+
+import setuptools
 
 THISDIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -37,7 +38,7 @@ setuptools.setup(
     description="LSP server for GTIRB",
     packages=["gtirb_lsp_server"],
     entry_points={"console_scripts": ["gtirb_lsp_server=gtirb_lsp_server.__main__:main"]},
-    install_requires=["gtirb >= 1.10.4", "pygls", "packaging"],
+    install_requires=["gtirb >= 1.10.4", "pygls>=0.11.3,<=0.12.2", "packaging"],
     extras_require={"rewriting": ["gtirb-rewriting", "mcasm", "gtirb-functions"]},
     classifiers=["Programming Language :: Python :: 3"],
 )
