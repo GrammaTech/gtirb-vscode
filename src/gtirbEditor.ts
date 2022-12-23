@@ -77,6 +77,13 @@ class GtirbDocument extends Disposable implements vscode.CustomDocument {
         });
 
         if (asmPath) {
+            // Set as file permission according to config setting
+            const readOnly = vscode.workspace.getConfiguration().get<boolean>('gtirb.listings.viewMode');
+            if (readOnly) {
+                fs.chmod(asmPath, 0o444, () => {
+                    console.log(`setting ${asmPath} to read only`);
+                });
+            }
             vscode.window.showTextDocument(vscode.Uri.file(asmPath));
         } else {
             vscode.window.showErrorMessage(`Could not find gtirb disassembly in: ${asms.join(', ')}`);

@@ -113,9 +113,14 @@ async def test_did_save_success():
 
     server.reset_mocks()
     server.did_change(changeParams)
-    # If success there should be 2 log messages and no user messages
-    assert server.gtirb_server.show_message_log.call_count == 2
-    assert server.gtirb_server.show_message.call_count == 0
+    if server.can_rewrite():
+        # If rewriting there should be 2 log messages and no user messages
+        assert server.gtirb_server.show_message_log.call_count == 2
+        assert server.gtirb_server.show_message.call_count == 0
+    else:
+        # If not rewriting there should be 1 log message and 1 user mesage
+        assert server.gtirb_server.show_message_log.call_count == 1
+        assert server.gtirb_server.show_message.call_count == 1
 
     # Call server.did_save() to process edit and rewrite file
     saveParams = DidSaveTextDocumentParams(
@@ -125,7 +130,7 @@ async def test_did_save_success():
     if server.can_rewrite():
         server.gtirb_server.show_message.assert_called_once_with("GTIRB rewritten successfully")
     else:
-        server.gtirb_server.show_message.assert_called_once_with("GTIRB rewriting is disabled")
+        assert server.gtirb_server.show_message.call_count == 2
 
     # Call server.did_close()
     closeParams = DidCloseTextDocumentParams(

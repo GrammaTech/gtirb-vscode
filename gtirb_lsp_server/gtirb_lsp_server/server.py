@@ -955,6 +955,14 @@ def create_gtirb_server_instance():
         uri = params.text_document.uri
         logger.debug(f"Document Did Change notification, {params.text_document.uri}")
         ls.show_message_log(f"Document Did Change notification, {params.text_document.uri}")
+
+        #
+        # Go ahead with tracking edits only if server has enabled rewriting
+        #
+        if not ls.can_rewrite():
+            ls.show_message("Warning: GTIRB rewriting is disabled")
+            return None
+
         if uri not in modified_blocks:
             modified_blocks[uri] = set()
 

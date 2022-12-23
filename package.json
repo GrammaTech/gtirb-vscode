@@ -2,7 +2,7 @@
     "name": "gtirb-vscode",
     "displayName": "GTIRB",
     "description": "Load and view GTIRB files",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "publisher": "grammatech",
     "license": "proprietary",
     "repository": {
@@ -59,7 +59,7 @@
             {
                 "id": "gtmips",
                 "aliases": [
-                    "GTIRB MIPS assembly",
+                    "GTIRB assembly",
                     "gtmips"
                 ],
                 "filenamePatterns": [
@@ -97,6 +97,11 @@
                     "type": "number",
                     "description": "Port to connect to.",
                     "default": 3036
+                },
+                "gtirb.listings.viewMode": {
+                    "type": "boolean",
+                    "description": "View is Read-Only.",
+                    "default": false
                 }
             }
         },
