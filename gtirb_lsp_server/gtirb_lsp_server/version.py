@@ -20,4 +20,4 @@
 # reflect the position or policy of the Government and no official
 # endorsement should be inferred.
 __packagename__ = "gtirb_lsp_server"
-__version__ = "0.0.8.dev"
+__version__ = "0.0.10.dev"

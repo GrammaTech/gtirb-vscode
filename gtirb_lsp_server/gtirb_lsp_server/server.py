@@ -1318,7 +1318,7 @@ def create_gtirb_server_instance():
         logger.debug(f"Hover request received uri: {params.text_document.uri}")
         ls.show_message_log(f"Hover request received uri: {params.text_document.uri}")
         if params.text_document.uri not in current_gtirbs:
-            ls.show_message(f" {params.texyt_document.uri} has not been indexed yet.")
+            ls.show_message(f" {params.text_document.uri} has not been indexed yet.")
             return None
         ir = current_gtirbs[params.text_document.uri]
         (offset_by_line, line_by_offset) = current_indexes[params.text_document.uri]

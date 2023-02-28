@@ -38,9 +38,7 @@ import {
 } from 'vscode-languageclient/node';
 
 import { GtirbEditorProvider } from './gtirbEditor';
-
 import { getAddressAndJump, getPathForListing } from './customCommands';
-
 import {promises as fs} from 'fs';
 import * as url from 'url';
 
@@ -119,7 +117,6 @@ class GtirbDocumentSymbolProvider implements vscode.DocumentSymbolProvider
 }
 
 
-
 function getClientOptions(): LanguageClientOptions {
     return {
         // Register the server for GT assembly documents
@@ -135,10 +132,6 @@ function getClientOptions(): LanguageClientOptions {
     };
 }
 
-
-function isStartedInDebugMode(): boolean {
-    return process.env.VSCODE_DEBUG_MODE === "true";
-}
 
 function startLangServerTCP(port: number, hostAddr: string): LanguageClient {
     const serverOptions: ServerOptions = () => {
@@ -242,31 +235,40 @@ function registerLspHandlers(client: LanguageClient) {
     });
 }
 
+
 export async function activate(context: vscode.ExtensionContext) {
-    const port = workspace.getConfiguration().get<number>('gtirb.server.port');
-    const hostAddr = workspace.getConfiguration().get<string>('gtirb.server.host');
-
+    // Get python path fr custom editor, amy also be used for LSP server in stdio mode
     const pythonPath = await getPythonPath();
-
     if (!pythonPath) {
         throw new Error("`python.pythonPath` is not set");
     }
 
+    // Register custom editor
+    context.subscriptions.push(GtirbEditorProvider.register(context, pythonPath));
+
+    // Start LSP if needed.
+    const port = workspace.getConfiguration().get<number>('gtirb.server.port');
+    const hostAddr = workspace.getConfiguration().get<string>('gtirb.server.host');
     if (hostAddr === 'stdio') {
-        if (client === null) {
-            client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], path.join(context.extensionPath, "gtirb_lsp_server"));
+        // If stdio mode, only start the LSP server if halucinator extension is not installed
+        const halucinatorExtension =
+            vscode.extensions.getExtension('grammatech.halucinator-vscode');
+        if (!halucinatorExtension) {
+            if (client === null) {
+                client = startLangServer(pythonPath, ["-m", "gtirb_lsp_server"], path.join(context.extensionPath, "gtirb_lsp_server"));
+                registerLspHandlers(client);
+                context.subscriptions.push(client.start());
+            }
         }
     } else {
         if (client === null) {
             client = startLangServerTCP(port!, hostAddr!);
+            registerLspHandlers(client);
+            context.subscriptions.push(client.start());
         }
     }
-    registerLspHandlers(client);
 
-    // Register our custom editor providers
-    context.subscriptions.push(client.start());
-    context.subscriptions.push(GtirbEditorProvider.register(context, pythonPath));
-
+    // Register commands
     context.subscriptions.push(
         commands.registerCommand('gtirb-vscode.goToAddress', () => {
             getAddressAndJump();
