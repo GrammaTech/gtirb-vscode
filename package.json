@@ -41,6 +41,21 @@
         ],
         "languages": [
             {
+                "id": "gtmips",
+                "aliases": [
+                    "GTIRB assembly",
+                    "gtmips"
+                ],
+                "filenamePatterns": [
+                    "*.view",
+                    "*mips*"
+                ],
+                "extensions": [
+                    ".view"
+                ],
+                "configuration": "./gtmips-language-configuration.json"
+            },
+            {
                 "id": "gtgas",
                 "aliases": [
                     "GTIRB GAS/AT&T x86/x64",
@@ -55,21 +70,6 @@
                     ".view"
                 ],
                 "configuration": "./gtgas-language-configuration.json"
-            },
-            {
-                "id": "gtmips",
-                "aliases": [
-                    "GTIRB assembly",
-                    "gtmips"
-                ],
-                "filenamePatterns": [
-                    "*.view",
-                    "*mips*"
-                ],
-                "extensions": [
-                    ".view"
-                ],
-                "configuration": "./gtmips-language-configuration.json"
             }
         ],
         "grammars": [
