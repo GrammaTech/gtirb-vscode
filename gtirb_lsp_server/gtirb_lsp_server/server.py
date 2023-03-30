@@ -334,10 +334,14 @@ def symbolic_references(
     """
     if isinstance(symbols, gtirb.Symbol):
         uuid = symbols.uuid
-        return filter(lambda pair: pair[1].uuid == uuid, all_symbolic_expression_symbols(ir))
+        return filter(
+            lambda pair: pair[1] and pair[1].uuid == uuid, all_symbolic_expression_symbols(ir)
+        )
     else:
         uuids = list(map(lambda s: s.uuid, symbols))
-        return filter(lambda pair: pair[1].uuid in uuids, all_symbolic_expression_symbols(ir))
+        return filter(
+            lambda pair: pair[1] and pair[1].uuid in uuids, all_symbolic_expression_symbols(ir)
+        )
 
 
 def offsets_at_references(
